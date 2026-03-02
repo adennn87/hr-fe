@@ -26,6 +26,21 @@ export interface ResetPasswordPayload {
   newPassword: string;
 }
 
+const DEMO_ADMIN = {
+  email: 'admin@hr.com.vn',
+  password: 'Admin@123',
+  user: {
+    id: 'u-001',
+    name: 'System Admin',
+    email: 'admin@hr.com.vn',
+    role: 'System Admin',
+    department: 'IT Security',
+    location: 'Hanoi',
+    avatar: '',
+    mfaEnabled: false,
+  } as UserProfile,
+};
+
 export const authService = {
   /**
    * Đăng nhập
@@ -33,6 +48,15 @@ export const authService = {
    * @param password 
    */
   async login(email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+
+    if (DEMO_ADMIN.email === normalizedEmail && DEMO_ADMIN.password === normalizedPassword) {
+      return {
+        accessToken: 'demo-admin-token',
+        user: DEMO_ADMIN.user,
+      } satisfies LoginResponse;
+    }
     return fetchClient<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),

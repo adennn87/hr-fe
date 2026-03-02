@@ -86,6 +86,9 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
       <div className="mb-8">
         <h2 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h2>
         <p className="text-slate-500 mt-2 text-sm">Enter your credentials to access the workspace.</p>
+        {/* <p className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+          Demo admin: <strong>admin@hr.com.vn</strong> / <strong>Admin@123</strong>
+        </p> */}
       </div>
 
       <Form {...form}>

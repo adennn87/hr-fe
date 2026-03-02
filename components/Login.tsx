@@ -9,8 +9,15 @@ import { MfaForm } from './auth/MfaForm';
 import { UserProfile } from '@/types/types';
 import { CheckCircle2, Shield } from 'lucide-react';
 
-export function Login({ onLogin }: { onLogin: (user: UserProfile) => void }) {
-  const [step, setStep] = useState<'credentials' | 'register' | 'mfa' | 'forgot' | 'reset'>('credentials');
+type AuthStep = 'credentials' | 'register' | 'mfa' | 'forgot' | 'reset';
+
+type LoginProps = {
+  initialStep?: AuthStep;
+  onLogin?: (user: UserProfile) => void;
+};
+
+export function Login({ onLogin, initialStep = 'credentials' }: LoginProps) {
+  const [step, setStep] = useState<AuthStep>(initialStep);
   const [identifier, setIdentifier] = useState('');
 
   return (
@@ -88,8 +95,7 @@ export function Login({ onLogin }: { onLogin: (user: UserProfile) => void }) {
               <MfaForm 
                 email={identifier}
                 onBack={() => setStep('credentials')}
-                onLogin={onLogin}
-              />
+                onLogin={onLogin ?? (() => undefined)}              />
             )}
 
             {step === 'forgot' && (
