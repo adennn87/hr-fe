@@ -18,7 +18,7 @@ const registerSchema = z.object({
   gender: z.enum([Gender.MALE, Gender.FEMALE, Gender.OTHER]),
   email: z.string().email("Email không hợp lệ"),
   phoneNumber: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "SĐT không hợp lệ"),
-  
+
   // Logic check đủ 18 tuổi
   dateOfBirth: z.string().refine((dateString) => {
     const birthDate = new Date(dateString);
@@ -33,15 +33,15 @@ const registerSchema = z.object({
     message: "Nhân viên phải đủ 18 tuổi",
   }),
 
-  citizenIdentification: z.string().length(12, "CCCD phải đúng 12 số").regex(/^\d+$/, "Chỉ nhập số"),
+  citizen_Id: z.string().length(12, "CCCD phải đúng 12 số").regex(/^\d+$/, "Chỉ nhập số"),
   address: z.string().min(5, "Địa chỉ quá ngắn"),
   taxcode: z.string().optional(),
-  
+
   password: z.string()
     .min(8, "Tối thiểu 8 ký tự")
     .regex(/[A-Z]/, "Cần 1 chữ in hoa")
     .regex(/[!@#$%^&*(),.?":{}|<>]/, "Cần 1 ký tự đặc biệt"),
-    
+
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu không khớp",
@@ -73,7 +73,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
   });
 
   const passwordValue = watch("password", "");
-  
+
   // Tính ngày max cho input date (Hôm nay - 18 năm)
   const maxDate = new Date();
   maxDate.setFullYear(maxDate.getFullYear() - 18);
@@ -91,18 +91,18 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
     try {
       // Gọi service đăng ký
       await authService.register(data);
-      
-      toast.success("Đăng ký thành công!", { 
-        description: "Tài khoản đã được tạo. Vui lòng đăng nhập." 
+
+      toast.success("Đăng ký thành công!", {
+        description: "Tài khoản đã được tạo. Vui lòng đăng nhập."
       });
-      
+
       // Quay lại trang login sau khi thành công
       onBack();
-      
+
     } catch (error: any) {
       console.error("Register error:", error);
-      toast.error("Đăng ký thất bại", { 
-        description: error.message || "Vui lòng kiểm tra lại thông tin." 
+      toast.error("Đăng ký thất bại", {
+        description: error.message || "Vui lòng kiểm tra lại thông tin."
       });
     } finally {
       setIsLoading(false);
@@ -111,7 +111,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
 
   return (
     <div className="animate-in slide-in-from-right-8 duration-500 w-full max-w-2xl mx-auto">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -124,13 +124,13 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        
+
         {/* SECTION 1: PERSONAL INFO */}
         <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-blue-600 font-semibold text-sm uppercase tracking-wider">
             <User className="w-4 h-4" /> Personal Information
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Full Name */}
             <div className="space-y-2">
@@ -142,7 +142,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             {/* Gender */}
             <div className="space-y-2">
               <Label>Gender <span className="text-red-500">*</span></Label>
-              <select 
+              <select
                 {...register("gender")}
                 className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
               >
@@ -156,11 +156,11 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             <div className="space-y-2">
               <Label>Date of Birth <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <Input 
-                  {...register("dateOfBirth")} 
-                  type="date" 
+                <Input
+                  {...register("dateOfBirth")}
+                  type="date"
                   max={maxDateString}
-                  className={`pl-10 ${errors.dateOfBirth ? "border-red-500" : ""}`} 
+                  className={`pl-10 ${errors.dateOfBirth ? "border-red-500" : ""}`}
                 />
                 <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               </div>
@@ -171,17 +171,17 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             <div className="space-y-2">
               <Label>ID Card (CCCD) <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <Input {...register("citizenIdentification")} maxLength={12} placeholder="001234567890" className={`pl-10 ${errors.citizenIdentification ? "border-red-500" : ""}`} />
+                <Input {...register("citizen_Id")} maxLength={12} placeholder="001234567890" className={`pl-10 ${errors.citizen_Id ? "border-red-500" : ""}`} />
                 <CreditCard className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               </div>
-              {errors.citizenIdentification && <p className="text-red-500 text-xs mt-1">{errors.citizenIdentification.message}</p>}
+              {errors.citizen_Id && <p className="text-red-500 text-xs mt-1">{errors.citizen_Id.message}</p>}
             </div>
           </div>
         </div>
 
         {/* SECTION 2: CONTACT INFO */}
         <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
-           <div className="flex items-center gap-2 mb-2 text-blue-600 font-semibold text-sm uppercase tracking-wider">
+          <div className="flex items-center gap-2 mb-2 text-blue-600 font-semibold text-sm uppercase tracking-wider">
             <MapPin className="w-4 h-4" /> Contact Details
           </div>
 
@@ -200,11 +200,11 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               <Input {...register("taxcode")} placeholder="Tax Code" />
             </div>
           </div>
-          
+
           <div className="space-y-2">
-             <Label>Address <span className="text-red-500">*</span></Label>
-             <Input {...register("address")} placeholder="123 Street, City..." className={errors.address ? "border-red-500" : ""} />
-             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
+            <Label>Address <span className="text-red-500">*</span></Label>
+            <Input {...register("address")} placeholder="123 Street, City..." className={errors.address ? "border-red-500" : ""} />
+            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
           </div>
         </div>
 
@@ -224,17 +224,17 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             <div className="space-y-2">
               <Label>Password <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <Input 
-                  {...register("password")} 
-                  type={showPassword ? "text" : "password"} 
-                  className={`pr-10 ${errors.password ? "border-red-500" : ""}`} 
+                <Input
+                  {...register("password")}
+                  type={showPassword ? "text" : "password"}
+                  className={`pr-10 ${errors.password ? "border-red-500" : ""}`}
                   placeholder="••••••••"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-slate-400 hover:text-blue-600">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              
+
               <div className="flex gap-2 mt-2 flex-wrap">
                 {requirements.map((req, i) => {
                   const isMet = req.re.test(passwordValue);
@@ -250,15 +250,15 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             <div className="space-y-2">
               <Label>Confirm Password <span className="text-red-500">*</span></Label>
               <Input {...register("confirmPassword")} type="password" placeholder="••••••••" className={errors.confirmPassword ? "border-red-500" : ""} />
-               {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
+              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
             </div>
           </div>
         </div>
 
         {/* SUBMIT BUTTON */}
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
+        <Button
+          type="submit"
+          disabled={isLoading}
           className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-lg shadow-lg shadow-blue-200/50 rounded-xl"
         >
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Check className="w-5 h-5 mr-2" />}

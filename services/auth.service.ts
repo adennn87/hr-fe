@@ -1,6 +1,18 @@
 import { fetchClient } from '@/lib/api';
 import { RegisterFormValues } from '@/components/auth/RegisterForm';
 import { UserProfile } from '@/types/types';
+
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  full_name: string;
+  phoneNumber?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
+  citizen_Id?: string;
+}
+
 // Định nghĩa kiểu dữ liệu trả về từ API Login
 export interface LoginResponse {
   accessToken: string;
@@ -33,10 +45,21 @@ export const authService = {
    */
   async register(data: RegisterFormValues) {
     // Nếu backend cần format lại dateOfBirth hoặc gender, xử lý ở đây trước khi gửi
+
+    const payload: RegisterPayload = {
+      email: data.email,
+      password: data.password,
+      full_name: data.full_name,
+      phoneNumber: data.phoneNumber,
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      address: data.address,
+      citizen_Id: data.citizen_Id,
+    };
     // Ví dụ: const payload = { ...data, gender: data.gender === 'male' ? 1 : 0 };
     return fetchClient('/auth/register', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -61,7 +84,7 @@ export const authService = {
       body: JSON.stringify(payload),
     });
   },
-  
+
   /**
    * Xác thực 2 bước (MFA)
    * @param code Mã OTP từ ứng dụng Authenticator/Email
@@ -69,8 +92,8 @@ export const authService = {
    */
   async verifyMfa(code: string, email: string) {
     return fetchClient<LoginResponse>('/auth/verify-mfa', {
-        method: 'POST',
-        body: JSON.stringify({ code, email })
+      method: 'POST',
+      body: JSON.stringify({ code, email })
     });
   },
 
