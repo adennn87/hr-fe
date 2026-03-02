@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Loader2, ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '@/services/auth.service'; // IMPORT SERVICE
@@ -46,16 +46,15 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true);
+  const handleLogin = async (data: LoginFormValues) => { setIsLoading(true);
     try {
-      // GỌI API LOGIN
+
       const response = await authService.login(data.email, data.password);
-      
-      // Lưu token (Nếu Backend trả về token ngay bước này)
+
       if (response.accessToken) {
         localStorage.setItem('accessToken', response.accessToken);
         localStorage.setItem('user', JSON.stringify(response.user));
+                document.cookie = `access_token=${response.accessToken}; path=/; max-age=${60 * 60 * 24}`;
       }
 
       setIdentifier(data.email);
@@ -79,6 +78,23 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const onSubmit = async (data: LoginFormValues) => {
+    await handleLogin(data);
+  };
+
+  const handleQuickDemoLogin = async () => {
+    const demoCredentials = {
+      email: 'admin@hr.com.vn',
+      password: 'Admin@123',
+    };
+
+    form.setValue('email', demoCredentials.email);
+    form.setValue('password', demoCredentials.password);
+    form.clearErrors();
+
+    await handleLogin(demoCredentials);
   };
 
   return (
@@ -144,7 +160,7 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
             )}
           />
 
-          <Button type="submit" disabled={isLoading} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-base font-semibold shadow-lg shadow-blue-100">
+                    <Button type="submit" disabled={isLoading} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-base font-semibold shadow-lg shadow-blue-100">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...

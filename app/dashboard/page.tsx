@@ -1,41 +1,13 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
 import { Dashboard } from '@/components/Dashboard';
-import { DEFAULT_SECURITY_CONTEXT, type User } from '@/lib/auth-types';
-
-function getCurrentUser(): User {
-  if (typeof window === 'undefined') {
-    return {
-      id: 'guest-001',
-      name: 'Guest',
-      email: 'guest@hr.com.vn',
-      role: 'Employee',
-      department: 'General',
-      location: 'Hanoi',
-      avatar: '',
-      mfaEnabled: false,
-    };
-  }
-
-  const user = localStorage.getItem('user');
-  if (!user) {
-    return {
-      id: 'guest-001',
-      name: 'Guest',
-      email: 'guest@hr.com.vn',
-      role: 'Employee',
-      department: 'General',
-      location: 'Hanoi',
-      avatar: '',
-      mfaEnabled: false,
-    };
-  }
-
-  return JSON.parse(user) as User;
-}
+import { DEFAULT_SECURITY_CONTEXT } from '@/lib/auth-types';
+import { useStoredUser } from '@/lib/use-stored-user';
 
 export default function DashboardPage() {
-  const user = getCurrentUser();
+
+  const user = useStoredUser();
 
   return <Dashboard user={user} securityContext={DEFAULT_SECURITY_CONTEXT} />;
 }
