@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
-import { UserProfile, MOCK_USERS } from '@/types/types';
+import { UserProfile, MOCK_USERS } from '@/styles/types';
 
 // Import component OTP xịn xò từ Shadcn
 import {
