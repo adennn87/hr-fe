@@ -14,7 +14,7 @@ import { authService } from '@/services/auth.service';
 
 // --- 1. SCHEMA VALIDATION ---
 const registerSchema = z.object({
-  name: z.string().min(2, "Họ tên quá ngắn"),
+  full_name: z.string().min(2, "Họ tên quá ngắn"),
   gender: z.enum([Gender.MALE, Gender.FEMALE, Gender.OTHER]),
   email: z.string().email("Email không hợp lệ"),
   phoneNumber: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "SĐT không hợp lệ"),
@@ -135,8 +135,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             {/* Full Name */}
             <div className="space-y-2">
               <Label>Full Name <span className="text-red-500">*</span></Label>
-              <Input {...register("name")} placeholder="Nguyen Van A" className={errors.name ? "border-red-500" : ""} />
-              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+              <Input {...register("full_name")} placeholder="Nguyen Van A" className={errors.full_name ? "border-red-500" : ""} />
+              {errors.full_name && <p className="text-red-500 text-xs mt-1">{errors.full_name.message}</p>}
             </div>
 
             {/* Gender */}

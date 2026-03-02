@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/sonner';
-import '../types/index.css';
+import '../styles/index.css';
 
 export const metadata: Metadata = {
     title: 'HR System',
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
       <body className="antialiased">
         {children}
         <Toaster />
