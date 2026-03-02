@@ -1,0 +1,11 @@
+/* Sử dụng cú pháp chuẩn của Tailwind v4 */
+@import "tailwindcss";
+
+/* Dùng dấu ngoặc kép và đảm bảo đúng cú pháp.
+   Lưu ý: Nếu vẫn bị báo đỏ trong VS Code, đây là lỗi hiển thị của extension, 
+   không ảnh hưởng đến việc chạy ứng dụng.
+*/
+@source "../app/**/*.{js,ts,jsx,tsx}";
+@source "../components/**/*.{js,ts,jsx,tsx}";
+
+/* ĐÃ XÓA DÒNG @import 'tw-animate-css' */
