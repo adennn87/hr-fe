@@ -19,13 +19,6 @@ export function IAMCore({ user }: IAMCoreProps) {
     { id: '4', name: 'Phạm Thị Dung', email: 'dung@company.vn', status: 'suspended', department: 'Finance', syncSource: 'Google Workspace' },
   ];
 
-  const authMethods = [
-    { method: 'SSO (Single Sign-On)', enabled: true, users: 145, success: 99.2 },
-    { method: 'MFA (Multi-Factor)', enabled: true, users: 145, success: 98.5 },
-    { method: 'WebAuthn/FIDO2', enabled: true, users: 23, success: 100 },
-    { method: 'Passwordless', enabled: true, users: 23, success: 100 },
-  ];
-
   const policies = [
     {
       id: '1',
@@ -90,7 +83,6 @@ export function IAMCore({ user }: IAMCoreProps) {
         <div className="flex gap-6">
           {[
             { id: 'identity', label: 'Quản lý Định danh', icon: Users },
-            { id: 'auth', label: 'Xác thực (AuthN)', icon: Key },
             { id: 'authz', label: 'Ủy quyền (AuthZ)', icon: Lock },
             { id: 'policies', label: 'Policy Engine', icon: Settings },
           ].map((tab) => {
@@ -168,32 +160,9 @@ export function IAMCore({ user }: IAMCoreProps) {
 
       {activeTab === 'auth' && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Phương thức xác thực</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {authMethods.map((method, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-gray-900">{method.method}</h4>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    method.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {method.enabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Người dùng:</span>
-                    <span className="font-medium text-gray-900">{method.users}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tỷ lệ thành công:</span>
-                    <span className="font-medium text-green-600">{method.success}%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          
+
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
