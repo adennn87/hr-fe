@@ -20,6 +20,15 @@ export function Login({ onLogin, initialStep = 'credentials' }: LoginProps) {
   const [step, setStep] = useState<AuthStep>(initialStep);
   const [identifier, setIdentifier] = useState('');
 
+  const handleLoginSuccess = (user: UserProfile) => {
+    if (onLogin) {
+      onLogin(user);
+      return;
+    }
+
+    window.location.href = '/dashboard';
+  };
+
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
       
@@ -95,7 +104,8 @@ export function Login({ onLogin, initialStep = 'credentials' }: LoginProps) {
               <MfaForm 
                 email={identifier}
                 onBack={() => setStep('credentials')}
-                onLogin={onLogin ?? (() => undefined)}              />
+                onLogin={handleLoginSuccess}
+              />
             )}
 
             {step === 'forgot' && (
