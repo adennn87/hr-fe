@@ -1,6 +1,6 @@
 import { fetchClient } from '@/lib/api';
 import { RegisterFormValues } from '@/components/auth/RegisterForm';
-import { UserProfile } from '@/styles/types';
+import { UserProfile } from '@/types/types';
 // Định nghĩa kiểu dữ liệu trả về từ API Login
 export interface LoginResponse {
   accessToken: string;

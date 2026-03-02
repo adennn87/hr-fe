@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/sonner';
-
+import '../types/index.css';
 
 export const metadata: Metadata = {
     title: 'HR System',

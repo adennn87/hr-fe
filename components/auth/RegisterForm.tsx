@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { ArrowLeft, Shield, Loader2, Check, Eye, EyeOff, User, Phone, MapPin, Calendar, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
-import { Gender } from '@/styles/types';
+import { Gender } from '@/types/types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
