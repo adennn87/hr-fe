@@ -11,6 +11,7 @@ export interface RegisterPayload {
   dateOfBirth?: string;
   address?: string;
   citizen_Id?: string;
+  mfaEnabled?: boolean;
 }
 
 // Định nghĩa kiểu dữ liệu trả về từ API Login
@@ -37,7 +38,7 @@ const DEMO_ADMIN = {
     department: 'IT Security',
     location: 'Hanoi',
     avatar: '',
-    mfaEnabled: false,
+    mfaEnabled: true,
   } as UserProfile,
 };
 
@@ -57,10 +58,18 @@ export const authService = {
         user: DEMO_ADMIN.user,
       } satisfies LoginResponse;
     }
-    return fetchClient<LoginResponse>('/auth/login', {
+    const response = await fetchClient<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    return {
+      ...response,
+      user: {
+        ...response.user,
+        // fallback để tài khoản mới (backend chưa trả mfaEnabled) vẫn vào luồng 2FA
+        mfaEnabled: response.user.mfaEnabled ?? true,
+      },
+    };
   },
 
   /**
@@ -79,6 +88,7 @@ export const authService = {
       dateOfBirth: data.dateOfBirth,
       address: data.address,
       citizen_Id: data.citizen_Id,
+      mfaEnabled: false, // Mặc định tắt MFA khi đăng ký, user có thể bật sau trong profile
     };
     // Ví dụ: const payload = { ...data, gender: data.gender === 'male' ? 1 : 0 };
     return fetchClient('/auth/register', {
