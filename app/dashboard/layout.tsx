@@ -10,7 +10,7 @@ import { GUEST_USER, useStoredUser } from '@/lib/use-stored-user';
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan' },
   { href: '/dashboard/employees', label: 'Nhân sự' },
-  { href: '/dashboard/attendance', label: 'Chấm công' },
+  { href: '/dashboard/attendance', label: 'Lịch làm việc' },
   { href: '/dashboard/payroll', label: 'Lương thưởng' },
   { href: '/dashboard/recruitment', label: 'Tuyển dụng' },
 ];

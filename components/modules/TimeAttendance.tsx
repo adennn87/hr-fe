@@ -9,17 +9,10 @@ interface TimeAttendanceProps {
 }
 
 export function TimeAttendance({ user }: TimeAttendanceProps) {
-  const [activeTab, setActiveTab] = useState<'checkin' | 'leave' | 'schedule'>('checkin');
+  const [activeTab, setActiveTab] = useState< 'leave' | 'schedule'>('leave');
   const [checkInStatus, setCheckInStatus] = useState<'not_checked' | 'checking' | 'success' | 'blocked'>('not_checked');
 
-  // Mock attendance data
-  const attendanceRecords = [
-    { id: '1', date: '2024-02-09', checkIn: '08:45', checkOut: '17:30', status: 'present', location: 'Office - Hanoi' },
-    { id: '2', date: '2024-02-08', checkIn: '08:50', checkOut: '17:35', status: 'present', location: 'Office - Hanoi' },
-    { id: '3', date: '2024-02-07', checkIn: '09:15', checkOut: '17:40', status: 'late', location: 'Office - Hanoi' },
-    { id: '4', date: '2024-02-06', checkIn: '08:40', checkOut: '17:25', status: 'present', location: 'Office - Hanoi' },
-    { id: '5', date: '2024-02-05', checkIn: '-', checkOut: '-', status: 'absent', location: '-' },
-  ];
+
 
   // Mock leave requests
   const leaveRequests = [
@@ -68,10 +61,10 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
             <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
               <Clock className="w-6 h-6 text-orange-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Time & Attendance</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Work Schedule & Leave</h2>
           </div>
           <p className="text-gray-600">
-            Chấm công & Nghỉ phép - Kiểm soát ngữ cảnh chống giả mạo
+            Lịch làm việc và quản lý nghỉ phép.
           </p>
         </div>
       </div>
@@ -80,7 +73,6 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       <div className="border-b border-gray-200">
         <div className="flex gap-6">
           {[
-            { id: 'checkin', label: 'Chấm công', icon: UserCheck },
             { id: 'leave', label: 'Quản lý nghỉ phép', icon: Calendar },
             { id: 'schedule', label: 'Xếp ca làm việc', icon: Clock },
           ].map((tab) => {
@@ -103,134 +95,8 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
         </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'checkin' && (
-        <div className="space-y-4">
-          {/* Check-in Widget */}
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-6">
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </h3>
-              <p className="text-4xl font-bold text-orange-600">
-                {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
 
-            {checkInStatus === 'not_checked' && (
-              <button
-                onClick={handleCheckIn}
-                className="w-full py-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-lg font-semibold"
-              >
-                Check In
-              </button>
-            )}
-
-            {checkInStatus === 'checking' && (
-              <div className="text-center py-4">
-                <div className="animate-spin w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-                <p className="text-gray-600">Đang xác minh vị trí và thiết bị...</p>
-              </div>
-            )}
-
-            {checkInStatus === 'success' && (
-              <div className="text-center py-4">
-                <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-3" />
-                <p className="text-xl font-semibold text-green-600 mb-1">Check-in thành công!</p>
-                <p className="text-sm text-gray-600">08:45 - Office Hanoi</p>
-              </div>
-            )}
-
-            {checkInStatus === 'blocked' && (
-              <div className="text-center py-4">
-                <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-3" />
-                <p className="text-xl font-semibold text-red-600 mb-1">Check-in bị chặn!</p>
-                <p className="text-sm text-gray-600">GPS không khớp với văn phòng hoặc IP không hợp lệ</p>
-              </div>
-            )}
-          </div>
-
-          {/* Context Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-gray-900">Vị trí</span>
-              </div>
-              <p className="text-sm text-gray-600">21.028511, 105.804817</p>
-              <p className="text-xs text-green-600 mt-1">✓ Trong phạm vi văn phòng</p>
-            </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Clock className="w-5 h-5 text-purple-600" />
-                <span className="font-medium text-gray-900">Giờ làm việc</span>
-              </div>
-              <p className="text-sm text-gray-600">08:00 - 17:00</p>
-              <p className="text-xs text-green-600 mt-1">✓ Trong giờ cho phép</p>
-            </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <UserCheck className="w-5 h-5 text-green-600" />
-                <span className="font-medium text-gray-900">Trạng thái</span>
-              </div>
-              <p className="text-sm text-gray-600">Đã check-in</p>
-              <p className="text-xs text-gray-500 mt-1">Lúc 08:45</p>
-            </div>
-          </div>
-
-          {/* Attendance History */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Lịch sử chấm công</h3>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Ngày</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Check In</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Check Out</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Vị trí</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {attendanceRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{record.date}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{record.checkIn}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{record.checkOut}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{record.location}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {record.status === 'present' && (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Có mặt</span>
-                        )}
-                        {record.status === 'late' && (
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">Đi muộn</span>
-                        )}
-                        {record.status === 'absent' && (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Vắng</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-orange-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Context-Aware Access</p>
-                <p className="text-orange-700">
-                  Chặn check-in nếu GPS không khớp với tọa độ văn phòng (Geofencing) hoặc IP không nằm trong 
-                  Whitelist (đối với nhân viên làm tại chỗ). Ngăn chặn gian lận chấm công.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {activeTab === 'leave' && (
         <div className="space-y-4">

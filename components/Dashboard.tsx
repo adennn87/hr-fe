@@ -46,8 +46,8 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     },
     {
       id: 'time' as ModuleType,
-      name: 'Chấm công & Nghỉ phép',
-      description: 'Time & Attendance',
+      name: 'Lịch làm việc & Nghỉ phép',
+      description: 'Work Schedule & Leave',
       icon: Clock,
       color: 'orange',
       roles: ['System Admin', 'HR Manager', 'Employee']
