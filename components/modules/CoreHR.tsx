@@ -154,19 +154,6 @@ export function CoreHR({ user }: CoreHRProps) {
               </div>
             ))}
           </div>
-
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-purple-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Need-to-know</p>
-                <p className="text-purple-700">
-                  Dữ liệu hiển thị dựa trên "Need-to-know". Nhân viên thường chỉ thấy tên/email đồng nghiệp, 
-                  không thấy số điện thoại cá nhân hay địa chỉ nhà trừ khi được cho phép.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -271,20 +258,7 @@ export function CoreHR({ user }: CoreHRProps) {
                 <p className="font-medium text-gray-900">{employeeProfile.employment.manager}</p>
               </div>
             </div>
-          </div>
-
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-red-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Field-level Encryption</p>
-                <p className="text-red-700">
-                  Mã hóa cấp độ trường dữ liệu cho số CMND/CCCD, mã số thuế, địa chỉ. 
-                  Chỉ người có quyền mới có thể xem dữ liệu gốc. Mọi truy cập được ghi audit log.
-                </p>
-              </div>
-            </div>
-          </div>
+          </div>  
         </div>
       )}
 
@@ -313,18 +287,7 @@ export function CoreHR({ user }: CoreHRProps) {
             ))}
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Laptop className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Device Health Integration</p>
-                <p className="text-blue-700">
-                  Tích hợp trạng thái thiết bị (Device Health). Nếu thiết bị được đánh dấu "Mất" hoặc 
-                  "Nhiễm virus", quyền truy cập hệ thống của nhân viên đó bị chặn tự động.
-                </p>
-              </div>
-            </div>
-          </div>
+          
         </div>
       )}
     </div>
