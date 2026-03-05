@@ -152,20 +152,6 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
                 })}
               </div>
             </div>
-
-            {/* Security Notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-semibold text-amber-900 mb-1">Zero Trust Active</p>
-                  <p className="text-amber-700">
-                    Mọi hành động đang được giám sát và ghi nhận vào audit log. 
-                    Quyền truy cập được đánh giá liên tục dựa trên ngữ cảnh (IP: {securityContext.ipAddress}, Vị trí: {securityContext.location}).
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         );
     }

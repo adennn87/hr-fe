@@ -180,7 +180,7 @@ export function AdminAudit({ user }: AdminAuditProps) {
             <h2 className="text-2xl font-bold text-gray-900">Admin & Audit</h2>
           </div>
           <p className="text-gray-600">
-            Quản trị & Giám sát - Dành cho System Admin và Compliance Officer
+            Quản trị & Giám sát
           </p>
         </div>
       </div>
@@ -307,20 +307,7 @@ export function AdminAudit({ user }: AdminAuditProps) {
               <p className="text-sm text-green-600 mb-1">Tình trạng hệ thống</p>
               <p className="text-2xl font-bold text-green-600">Tốt</p>
             </div>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Immutable Logs</p>
-                <p className="text-blue-700">
-                  Logs được đẩy sang Centralized Log Management server riêng biệt và không thể bị sửa/xóa 
-                  bởi Admin hệ thống (Immutable Logs). Đảm bảo tính toàn vẹn của audit trail.
-                </p>
-              </div>
-            </div>
-          </div>
+          </div>          
         </div>
       )}
 
@@ -358,21 +345,6 @@ export function AdminAudit({ user }: AdminAuditProps) {
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
-            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-purple-600" />
-              Policy Example: Context-Based Access
-            </h4>
-            <div className="bg-white rounded-lg p-4 font-mono text-sm">
-              <p className="text-gray-700">IF user.role == "Sales" AND access.source == "Mobile"</p>
-              <p className="text-gray-700">THEN require(vpn.enabled == true)</p>
-              <p className="text-gray-700">ELSE DENY</p>
-            </div>
-            <p className="text-sm text-gray-600 mt-3">
-              VD: "Nhân viên Sales truy cập CRM từ Mobile phải bật VPN/Cloudflare WARP"
-            </p>
           </div>
         </div>
       )}
@@ -434,18 +406,7 @@ export function AdminAudit({ user }: AdminAuditProps) {
             ))}
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-green-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Secure API Integration</p>
-                <p className="text-green-700">
-                  Xác thực API bằng OAuth2/mTLS (Mutual TLS). Kiểm soát chặt chẽ quyền hạn của từng API Key 
-                  theo nguyên tắc Least Privilege. Mọi API call đều được ghi audit log.
-                </p>
-              </div>
-            </div>
-          </div>
+         
 
           {/* API Keys Management */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">

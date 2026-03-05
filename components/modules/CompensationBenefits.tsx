@@ -208,19 +208,6 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
               </button>
             </div>
           ) : null}
-
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-orange-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Step-up Authentication</p>
-                <p className="text-orange-700">
-                  Admin phải xác thực lại lần 2 (MFA) khi thực hiện lệnh "Chốt lương" hoặc "Xuất file chuyển khoản ngân hàng". 
-                  Ngăn chặn hành vi gian lận hoặc session hijacking.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -253,19 +240,6 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Encrypted Payslip</p>
-                <p className="text-blue-700">
-                  File PDF phiếu lương được mã hóa bằng mật khẩu riêng hoặc chỉ xem được trên giao diện web 
-                  khi phiên đăng nhập an toàn (không cho phép tải về trên thiết bị lạ).
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       )}
