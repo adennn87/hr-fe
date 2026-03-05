@@ -10,6 +10,8 @@ export interface RegisterPayload {
   gender?: string;
   dateOfBirth?: string;
   address?: string;
+  department?: string;
+  position?: string;
   citizen_Id?: string;
   mfaEnabled?: boolean;
 }
@@ -87,6 +89,8 @@ export const authService = {
       gender: data.gender,
       dateOfBirth: data.dateOfBirth,
       address: data.address,
+      department: data.department,
+      position: data.position,
       citizen_Id: data.citizen_Id,
       mfaEnabled: false, // Mặc định tắt MFA khi đăng ký, user có thể bật sau trong profile
     };

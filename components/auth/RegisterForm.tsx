@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { ArrowLeft, Shield, Loader2, Check, Eye, EyeOff, User, Phone, MapPin, Calendar, CreditCard } from 'lucide-react';
+import { ArrowLeft, Shield, Loader2, Check, Eye, EyeOff, User, Phone, MapPin, Calendar, CreditCard, Briefcase, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Gender } from '@/types/types';
+import { Gender, Department, Position } from '@/types/types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,8 @@ import { authService } from '@/services/auth.service';
 const registerSchema = z.object({
   full_name: z.string().min(2, "Họ tên quá ngắn"),
   gender: z.enum([Gender.MALE, Gender.FEMALE, Gender.OTHER]),
+  department: z.enum([Department.CEO, Department.HR, Department.IT, Department.Finance, Department.Marketing, Department.Sales]),
+  position: z.enum([Position.CEO, Position.Manager, Position.Employee]),
   email: z.string().email("Email không hợp lệ"),
   phoneNumber: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "SĐT không hợp lệ"),
 
@@ -62,17 +64,40 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
   const {
     register,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       gender: Gender.MALE,
+      department: Department.HR,
+      position: Position.Employee,
       taxcode: '',
     }
   });
 
   const passwordValue = watch("password", "");
+
+  const selectedDepartment = watch("department");
+  const selectedPosition = watch("position");
+
+  const departmentPositionMap = useMemo(() => ({
+    [Department.CEO]: [Position.CEO],
+    [Department.HR]: [Position.Manager, Position.Employee],
+    [Department.IT]: [Position.Manager, Position.Employee],
+    [Department.Finance]: [Position.Manager, Position.Employee],
+    [Department.Marketing]: [Position.Manager, Position.Employee],
+    [Department.Sales]: [Position.Manager, Position.Employee],
+  }), []);
+
+  const availablePositions = useMemo(() => departmentPositionMap[selectedDepartment] ?? [Position.Employee], [departmentPositionMap, selectedDepartment]);
+
+  useEffect(() => {
+    if (!availablePositions.includes(selectedPosition)) {
+      setValue("position", availablePositions[0], { shouldValidate: true });
+    }
+  }, [availablePositions, selectedPosition, setValue]);
 
   // Tính ngày max cho input date (Hôm nay - 18 năm)
   const maxDate = new Date();
@@ -99,10 +124,11 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
       // Quay lại trang login sau khi thành công
       onBack();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Register error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Vui lòng kiểm tra lại thông tin.";
       toast.error("Đăng ký thất bại", {
-        description: error.message || "Vui lòng kiểm tra lại thông tin."
+        description: errorMessage
       });
     } finally {
       setIsLoading(false);
@@ -179,7 +205,76 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
           </div>
         </div>
 
+        {/* Department */}
+        {/* <div className="space-y-2">
+          <Label>Department <span className="text-red-500">*</span></Label>
+          <select
+            {...register("department")}
+            className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+          >
+            {Object.values(Department).map((department) => (
+              <option key={department} value={department}>{department}</option>
+            ))}
+          </select>
+          {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
+        </div>  */}
+
+        {/* Position */}
+        {/* <div className="space-y-2">
+          <Label>Position <span className="text-red-500">*</span></Label>
+          <select
+            {...register("position")}
+            className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+          >
+            {availablePositions.map((position) => (
+              <option key={position} value={position}>{position}</option>
+            ))}
+          </select>
+          {errors.position && <p className="text-red-500 text-xs mt-1">{errors.position.message}</p>}
+        </div> */}
+
         {/* SECTION 2: CONTACT INFO */}
+        <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 mb-2 text-blue-600 font-semibold text-sm uppercase tracking-wider">
+            <Building2 className="w-4 h-4" /> Work Information
+          </div>
+          <p className="text-xs text-slate-500">Chọn phòng ban trước, sau đó chọn chức vụ phù hợp.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label>Department <span className="text-red-500">*</span></Label>
+              <select
+                {...register("department")}
+                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${errors.department ? "border-red-500" : "border-slate-200"}`}
+              >
+                <option value="">Select department</option>
+                {Object.values(Department).map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
+              {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Position <span className="text-red-500">*</span></Label>
+              <div className="relative">
+                <select
+                  {...register("position")}
+                  disabled={!selectedDepartment}
+                  className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${errors.position ? "border-red-500" : "border-slate-200"}`}
+                >
+                  <option value="">Select position</option>
+                  {availablePositions.map((position) => (
+                    <option key={position} value={position}>{position}</option>
+                  ))}
+                </select>
+                <Briefcase className="absolute right-3 top-2.5 w-4 h-4 text-slate-300 pointer-events-none" />
+              </div>
+              {errors.position && <p className="text-red-500 text-xs mt-1">{errors.position.message}</p>}
+            </div>
+          </div>
+        </div>
+
         <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-blue-600 font-semibold text-sm uppercase tracking-wider">
             <MapPin className="w-4 h-4" /> Contact Details
@@ -207,6 +302,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
           </div>
         </div>
+        
 
         {/* SECTION 3: ACCOUNT & SECURITY */}
         <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">

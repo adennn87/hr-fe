@@ -17,6 +17,23 @@ export interface UserProfile {
   mfaEnabled: boolean;
 }
 
+
+export enum Department {
+  SelectDepartment = 'Select Department',
+  CEO = 'CEO',
+  HR = 'HR',
+  IT = 'IT',
+  Finance = 'Finance',
+  Marketing = 'Marketing',
+  Sales = 'Sales',
+}
+
+export enum Position {
+  CEO = 'CEO',
+  Manager = 'Manager',
+  Employee = 'Employee',
+}
+
 export const MOCK_USERS: Record<string, UserProfile> = {
   'admin@hr.com.vn': {
     id: 'u-001', name: 'System Admin', email: 'admin@hr.com.vn', role: 'System Admin',
