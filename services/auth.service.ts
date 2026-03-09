@@ -14,6 +14,7 @@ export interface RegisterPayload {
   position?: string;
   citizen_Id?: string;
   mfaEnabled?: boolean;
+  taxCode?: string; // Thêm trường taxCode tùy chọn
 }
 
 // Định nghĩa kiểu dữ liệu trả về từ API Login
@@ -93,6 +94,7 @@ export const authService = {
       position: data.position,
       citizen_Id: data.citizen_Id,
       mfaEnabled: false, // Mặc định tắt MFA khi đăng ký, user có thể bật sau trong profile
+      taxCode: data.taxCode, // Gửi taxCode nếu có
     };
     // Ví dụ: const payload = { ...data, gender: data.gender === 'male' ? 1 : 0 };
     return fetchClient('/auth/register', {

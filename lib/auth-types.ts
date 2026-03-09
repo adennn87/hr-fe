@@ -7,6 +7,7 @@ export interface User {
   location: string;
   avatar: string;
   mfaEnabled: boolean;
+  taxCode?: string; // Thêm trường taxCode tùy chọn
 }
 
 export interface SecurityContextData {

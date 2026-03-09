@@ -71,7 +71,7 @@ const registerSchema = z
       .length(12, "CCCD phải đúng 12 số")
       .regex(/^\d+$/, "Chỉ nhập số"),
     address: z.string().min(5, "Địa chỉ quá ngắn"),
-    taxcode: z.string().optional(),
+    taxCode: z.string().optional(),
 
     password: z
       .string()
@@ -109,7 +109,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
       gender: Gender.MALE,
       department: Department.SelectDepartment,
       position: Position.Employee, // ✅ FIX: luôn có giá trị enum hợp lệ
-      taxcode: "",
+      taxCode: "",
     },
   });
 
@@ -392,7 +392,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
 
             <div className="space-y-2">
               <Label>Tax Code (Optional)</Label>
-              <Input {...register("taxcode")} placeholder="Tax Code" />
+              <Input {...register("taxCode")} placeholder="Tax Code" />
             </div>
           </div>
 
