@@ -19,7 +19,6 @@ export function CoreHR({ user }: CoreHRProps) {
       email: 'admin@hr.com.vn',
       department: 'IT',
       role: 'System Admin',
-      status: 'Đang làm việc',
     },
     {
       id: 'EMP-2024-014',
@@ -27,7 +26,6 @@ export function CoreHR({ user }: CoreHRProps) {
       email: 'mai.nguyen@hr.com.vn',
       department: 'HR',
       role: 'HR Manager',
-      status: 'Đang làm việc',
     },
     {
       id: 'EMP-2024-027',
@@ -35,7 +33,6 @@ export function CoreHR({ user }: CoreHRProps) {
       email: 'hoang.tran@hr.com.vn',
       department: 'Finance',
       role: 'Employee',
-      status: 'Thử việc',
     },
     {
       id: 'EMP-2024-056',
@@ -43,7 +40,6 @@ export function CoreHR({ user }: CoreHRProps) {
       email: 'han.le@hr.com.vn',
       department: 'Sales',
       role: 'Employee',
-      status: 'Đang làm việc',
     },
   ]);
 
@@ -237,7 +233,6 @@ export function CoreHR({ user }: CoreHRProps) {
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Phòng ban</th>
                           <th className="px-4 py-3 text-left font-semibold text-gray-700">Vai trò</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Trạng thái</th>
                           <th className="px-4 py-3 text-right font-semibold text-gray-700">Hành động</th>
                         </tr>
                       </thead>
@@ -249,7 +244,6 @@ export function CoreHR({ user }: CoreHRProps) {
                             <td className="px-4 py-3 text-gray-700">{employee.email}</td>
                             <td className="px-4 py-3 text-gray-700">{employee.department}</td>
                             <td className="px-4 py-3 text-gray-700">{employee.role}</td>
-                            <td className="px-4 py-3 text-gray-700">{employee.status}</td>
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-end gap-2">
                                 <button className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-xs text-gray-700">

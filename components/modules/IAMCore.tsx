@@ -9,7 +9,7 @@ interface IAMCoreProps {
 }
 
 export function IAMCore({ user }: IAMCoreProps) {
-  const [activeTab, setActiveTab] = useState<'identity' | 'auth' | 'authz' | 'policies'>('identity');
+  const [activeTab, setActiveTab] = useState<'identity' | 'auth' | 'authz'>('identity');
 
   // Mock data
   const identities = [
@@ -84,7 +84,6 @@ export function IAMCore({ user }: IAMCoreProps) {
           {[
             { id: 'identity', label: 'Quản lý Định danh', icon: Users },
             { id: 'authz', label: 'Ủy quyền (AuthZ)', icon: Lock },
-            { id: 'policies', label: 'Policy Engine', icon: Settings },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -109,9 +108,6 @@ export function IAMCore({ user }: IAMCoreProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">User Directory</h3>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              + Thêm người dùng
-            </button>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -201,48 +197,7 @@ export function IAMCore({ user }: IAMCoreProps) {
             ))}
           </div>
         </div>
-      )}
-
-      {activeTab === 'policies' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Security Policies</h3>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              + Thêm Policy
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {policies.map((policy) => (
-              <div key={policy.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-gray-900">{policy.name}</h4>
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${policy.priority === 'Critical' ? 'bg-red-100 text-red-700' :
-                          policy.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                            'bg-yellow-100 text-yellow-700'
-                        }`}>
-                        {policy.priority}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">{policy.type}</p>
-                    <div className="bg-gray-50 rounded p-2 font-mono text-xs text-gray-700">
-                      {policy.condition}
-                    </div>
-                  </div>
-                  <span className={`ml-4 px-3 py-1 text-sm font-medium rounded ${policy.action === 'DENY' ? 'bg-red-100 text-red-700' :
-                      policy.action === 'REQUIRE_MFA' ? 'bg-orange-100 text-orange-700' :
-                        'bg-blue-100 text-blue-700'
-                    }`}>
-                    {policy.action}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      )}     
     </div>
   );
 }
