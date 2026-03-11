@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Users, Building2, User, Laptop, Lock, Eye, EyeOff } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Users, Building2, User, Laptop, Lock, Eye, EyeOff, Plus, Pencil, Trash2 } from 'lucide-react';
 import type { User as UserType } from '@/lib/auth-types';
 
 interface CoreHRProps {
@@ -11,6 +11,41 @@ interface CoreHRProps {
 export function CoreHR({ user }: CoreHRProps) {
   const [activeTab, setActiveTab] = useState<'orgchart' | 'profile' | 'assets'>('orgchart');
   const [showSensitiveData, setShowSensitiveData] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [employees, setEmployees] = useState([
+    {
+      id: 'EMP-2024-001',
+      fullName: 'System Admin',
+      email: 'admin@hr.com.vn',
+      department: 'IT',
+      role: 'System Admin',
+      status: 'Đang làm việc',
+    },
+    {
+      id: 'EMP-2024-014',
+      fullName: 'Nguyễn Thị Mai',
+      email: 'mai.nguyen@hr.com.vn',
+      department: 'HR',
+      role: 'HR Manager',
+      status: 'Đang làm việc',
+    },
+    {
+      id: 'EMP-2024-027',
+      fullName: 'Trần Minh Hoàng',
+      email: 'hoang.tran@hr.com.vn',
+      department: 'Finance',
+      role: 'Employee',
+      status: 'Thử việc',
+    },
+    {
+      id: 'EMP-2024-056',
+      fullName: 'Lê Gia Hân',
+      email: 'han.le@hr.com.vn',
+      department: 'Sales',
+      role: 'Employee',
+      status: 'Đang làm việc',
+    },
+  ]);
 
   // Mock org structure
   const orgChart = [
@@ -28,10 +63,10 @@ export function CoreHR({ user }: CoreHRProps) {
       email: user.email,
       phone: '0912345678',
       dateOfBirth: '1990-05-15',
-      gender: 'Nam',
-      idNumber: '001234567890', // Sensitive
-      taxCode: '8765432109', // Sensitive
-      address: '123 Đường ABC, Quận 1, TP.HCM', // Sensitive
+      gender: 'Male',
+      idNumber: '001234567890',
+      taxCode: '8765432109',
+      address: '123 Đường ABC, Quận 1, TP.HCM',
     },
     employment: {
       employeeId: 'EMP-2024-001',
@@ -74,10 +109,27 @@ export function CoreHR({ user }: CoreHRProps) {
     },
   ];
 
+  const isSystemAdmin = user.role === 'System Admin';
+
+  const filteredEmployees = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return employees;
+    return employees.filter((employee) =>
+      [employee.id, employee.fullName, employee.email, employee.department, employee.role]
+        .join(' ')
+        .toLowerCase()
+        .includes(keyword)
+    );
+  }, [employees, searchTerm]);
+
   const maskSensitiveData = (data: string) => {
     if (showSensitiveData) return data;
     if (data.length <= 4) return '****';
     return '*'.repeat(data.length - 4) + data.slice(-4);
+  };
+
+  const handleDeleteEmployee = (employeeId: string) => {
+    setEmployees((currentEmployees) => currentEmployees.filter((employee) => employee.id !== employeeId));
   };
 
   return (
@@ -109,7 +161,7 @@ export function CoreHR({ user }: CoreHRProps) {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'orgchart' | 'profile' | 'assets')}
                 className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-purple-600 text-purple-600'
@@ -125,171 +177,234 @@ export function CoreHR({ user }: CoreHRProps) {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'orgchart' && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Organizational Chart</h3>
+      <div className="mt-6">
+        {activeTab === 'orgchart' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Sơ đồ tổ chức (Organizational Chart)</h3>
+            <div className="space-y-2">
+              {orgChart.map((dept) => (
+                <div
+                  key={dept.id}
+                  className={`border border-gray-200 rounded-lg p-4 ${dept.parent ? 'ml-8' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <h4 className="font-medium text-gray-900">{dept.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          Quản lý: {dept.manager} • {dept.employees} nhân viên
+                        </p>
+                      </div>
+                    </div>
+                    <button className="text-sm text-purple-600 hover:text-purple-700">
+                      Xem chi tiết
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-          <div className="space-y-2">
-            {orgChart.map((dept) => (
-              <div
-                key={dept.id}
-                className={`border border-gray-200 rounded-lg p-4 ${
-                  dept.parent ? 'ml-8' : ''
-                }`}
-              >
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            {isSystemAdmin ? (
+              <>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Danh sách nhân sự</h3>
+                  <div className="flex gap-2">
+                    <input
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Tìm theo mã, tên, email..."
+                      className="w-full md:w-72 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <button className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
+                      <Plus className="w-4 h-4" />
+                      Tạo mới
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Mã NV</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Họ và tên</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Phòng ban</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Vai trò</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Trạng thái</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Hành động</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredEmployees.map((employee) => (
+                          <tr key={employee.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-700">{employee.id}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{employee.fullName}</td>
+                            <td className="px-4 py-3 text-gray-700">{employee.email}</td>
+                            <td className="px-4 py-3 text-gray-700">{employee.department}</td>
+                            <td className="px-4 py-3 text-gray-700">{employee.role}</td>
+                            <td className="px-4 py-3 text-gray-700">{employee.status}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <button className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-xs text-gray-700">
+                                  <Pencil className="w-3 h-3" />
+                                  Sửa
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEmployee(employee.id)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-red-200 hover:bg-red-50 text-xs text-red-600"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Xóa
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredEmployees.length === 0 && (
+                    <div className="px-4 py-8 text-sm text-center text-gray-500">
+                      Không có nhân viên phù hợp với từ khóa tìm kiếm.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Building2 className="w-5 h-5 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Hồ sơ cá nhân</h3>
+                  <button
+                    onClick={() => setShowSensitiveData(!showSensitiveData)}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    {showSensitiveData ? (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        <span className="text-sm">Ẩn dữ liệu nhạy cảm</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        <span className="text-sm">Hiện dữ liệu nhạy cảm</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Thông tin cá nhân</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="font-medium text-gray-900">{dept.name}</h4>
-                      <p className="text-sm text-gray-600">
-                        Quản lý: {dept.manager} • {dept.employees} nhân viên
+                      <label className="text-sm text-gray-600">Họ và tên</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.personalInfo.fullName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Email</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.personalInfo.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Số điện thoại</label>
+                      <p className="font-medium text-gray-900">{maskSensitiveData(employeeProfile.personalInfo.phone)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Ngày sinh</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.personalInfo.dateOfBirth}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Giới tính</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.personalInfo.gender}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        CMND/CCCD <Lock className="w-3 h-3 text-red-500" />
+                      </label>
+                      <p className="font-medium text-gray-900">{maskSensitiveData(employeeProfile.personalInfo.idNumber)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        Mã số thuế <Lock className="w-3 h-3 text-red-500" />
+                      </label>
+                      <p className="font-medium text-gray-900">{maskSensitiveData(employeeProfile.personalInfo.taxCode)}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        Địa chỉ <Lock className="w-3 h-3 text-red-500" />
+                      </label>
+                      <p className="font-medium text-gray-900">
+                        {showSensitiveData ? employeeProfile.personalInfo.address : '••••••••••••••••••'}
                       </p>
                     </div>
                   </div>
-                  <button className="text-sm text-purple-600 hover:text-purple-700">
-                    Xem chi tiết
-                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {activeTab === 'profile' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Hồ sơ cá nhân</h3>
-            <button
-              onClick={() => setShowSensitiveData(!showSensitiveData)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              {showSensitiveData ? (
-                <>
-                  <EyeOff className="w-4 h-4" />
-                  <span className="text-sm">Ẩn dữ liệu nhạy cảm</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm">Hiện dữ liệu nhạy cảm</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Personal Information */}
-          <div className="border border-gray-200 rounded-lg p-6">
-            <h4 className="font-semibold text-gray-900 mb-4">Thông tin cá nhân</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-600">Họ và tên</label>
-                <p className="font-medium text-gray-900">{employeeProfile.personalInfo.fullName}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Email</label>
-                <p className="font-medium text-gray-900">{employeeProfile.personalInfo.email}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Số điện thoại</label>
-                <p className="font-medium text-gray-900">{maskSensitiveData(employeeProfile.personalInfo.phone)}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Ngày sinh</label>
-                <p className="font-medium text-gray-900">{employeeProfile.personalInfo.dateOfBirth}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Giới tính</label>
-                <p className="font-medium text-gray-900">{employeeProfile.personalInfo.gender}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 flex items-center gap-1">
-                  CMND/CCCD
-                  <Lock className="w-3 h-3 text-red-500" />
-                </label>
-                <p className="font-medium text-gray-900">{maskSensitiveData(employeeProfile.personalInfo.idNumber)}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 flex items-center gap-1">
-                  Mã số thuế
-                  <Lock className="w-3 h-3 text-red-500" />
-                </label>
-                <p className="font-medium text-gray-900">{maskSensitiveData(employeeProfile.personalInfo.taxCode)}</p>
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm text-gray-600 flex items-center gap-1">
-                  Địa chỉ
-                  <Lock className="w-3 h-3 text-red-500" />
-                </label>
-                <p className="font-medium text-gray-900">
-                  {showSensitiveData ? employeeProfile.personalInfo.address : '••••••••••••••••••'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Employment Information */}
-          <div className="border border-gray-200 rounded-lg p-6">
-            <h4 className="font-semibold text-gray-900 mb-4">Thông tin công việc</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-600">Mã nhân viên</label>
-                <p className="font-medium text-gray-900">{employeeProfile.employment.employeeId}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Phòng ban</label>
-                <p className="font-medium text-gray-900">{employeeProfile.employment.department}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Vị trí</label>
-                <p className="font-medium text-gray-900">{employeeProfile.employment.position}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Ngày bắt đầu</label>
-                <p className="font-medium text-gray-900">{employeeProfile.employment.startDate}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Loại hợp đồng</label>
-                <p className="font-medium text-gray-900">{employeeProfile.employment.contractType}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Quản lý trực tiếp</label>
-                <p className="font-medium text-gray-900">{employeeProfile.employment.manager}</p>
-              </div>
-            </div>
-          </div>  
-        </div>
-      )}
-
-      {activeTab === 'assets' && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Tài sản được cấp phát</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {assets.map((asset) => (
-              <div key={asset.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Laptop className="w-5 h-5 text-blue-600" />
+                <div className="border border-gray-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Thông tin công việc</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">Mã nhân viên</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.employment.employeeId}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Phòng ban</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.employment.department}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Vị trí</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.employment.position}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Ngày bắt đầu</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.employment.startDate}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Loại hợp đồng</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.employment.contractType}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Quản lý trực tiếp</label>
+                      <p className="font-medium text-gray-900">{employeeProfile.employment.manager}</p>
+                    </div>
                   </div>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                    {asset.status === 'healthy' ? 'Bình thường' : 'Cảnh báo'}
-                  </span>
                 </div>
-                <h4 className="font-medium text-gray-900 mb-1">{asset.model}</h4>
-                <p className="text-sm text-gray-600 mb-3">SN: {asset.serial}</p>
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p>Cấp phát: {asset.assignedDate}</p>
-                  <p>Kiểm tra: {asset.lastCheck}</p>
-                </div>
-              </div>
-            ))}
+              </>
+            )}
           </div>
+        )}
 
-          
-        </div>
-      )}
+        {activeTab === 'assets' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Tài sản được cấp phát</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {assets.map((asset) => (
+                <div key={asset.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Laptop className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                      {asset.status === 'healthy' ? 'Bình thường' : 'Cảnh báo'}
+                    </span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-1">{asset.model}</h4>
+                  <p className="text-sm text-gray-600 mb-3">SN: {asset.serial}</p>
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p>Cấp phát: {asset.assignedDate}</p>
+                    <p>Kiểm tra: {asset.lastCheck}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
