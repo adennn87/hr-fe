@@ -149,20 +149,6 @@ export function ATS({ user }: ATSProps) {
         </div>
       </div>
 
-      {/* Security Warning */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-900">
-            <p className="font-semibold mb-1">Zero Trust Control: Database Isolation</p>
-            <p className="text-amber-700">
-              Database ứng viên (External) được tách biệt hoàn toàn với Database nhân viên chính thức (Internal) 
-              để tránh tấn công leo thang (Lateral Movement).
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex gap-6">
@@ -282,19 +268,6 @@ export function ATS({ user }: ATSProps) {
                 ))}
               </tbody>
             </table>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">Zero Trust Control: Just-in-Time Access</p>
-                <p className="text-blue-700">
-                  Người phỏng vấn chỉ xem được CV ứng viên trong đúng khung giờ phỏng vấn. 
-                  Sau khi kết thúc, quyền truy cập tự động bị thu hồi.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       )}

@@ -98,19 +98,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         </div>
       </div>
 
-      {/* High Security Warning */}
-      <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Shield className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-red-900">
-            <p className="font-bold mb-1 text-base">⚠️ Khu vực bảo mật cao nhất</p>
-            <p className="text-red-700">
-              Mọi thao tác trong module này đều yêu cầu xác thực bổ sung (Step-up Authentication). 
-              Dữ liệu được mã hóa end-to-end và ghi đầy đủ audit log.
-            </p>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Tabs */}
       <div className="border-b border-gray-200">

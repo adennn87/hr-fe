@@ -91,11 +91,10 @@ export function IAMCore({ user }: IAMCoreProps) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 <span className="font-medium">{tab.label}</span>
@@ -160,17 +159,13 @@ export function IAMCore({ user }: IAMCoreProps) {
 
       {activeTab === 'auth' && (
         <div className="space-y-4">
-          
-          
-
-
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-900">
                 <p className="font-semibold mb-1">Zero Trust Control</p>
                 <p className="text-blue-700">
-                  MFA/2FA bắt buộc cho tất cả người dùng. Hỗ trợ WebAuthn/FIDO2 (vân tay, FaceID, YubiKey) 
+                  MFA/2FA bắt buộc cho tất cả người dùng. Hỗ trợ WebAuthn/FIDO2 
                   cho trải nghiệm passwordless an toàn.
                 </p>
               </div>
@@ -182,7 +177,7 @@ export function IAMCore({ user }: IAMCoreProps) {
       {activeTab === 'authz' && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Phân quyền RBAC</h3>
-          
+
           <div className="space-y-3">
             {rbacRoles.map((role, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4">
@@ -205,19 +200,6 @@ export function IAMCore({ user }: IAMCoreProps) {
               </div>
             ))}
           </div>
-
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-purple-900">
-                <p className="font-semibold mb-1">RBAC + ABAC Hybrid</p>
-                <p className="text-purple-700">
-                  Phân quyền tĩnh theo Role (RBAC) kết hợp với phân quyền động theo thuộc tính (ABAC). 
-                  VD: HR Staff chỉ xem được lương của nhân viên thuộc Department = IT VÀ Location = Hanoi.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -237,11 +219,10 @@ export function IAMCore({ user }: IAMCoreProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-gray-900">{policy.name}</h4>
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        policy.priority === 'Critical' ? 'bg-red-100 text-red-700' :
-                        policy.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${policy.priority === 'Critical' ? 'bg-red-100 text-red-700' :
+                          policy.priority === 'High' ? 'bg-orange-100 text-orange-700' :
+                            'bg-yellow-100 text-yellow-700'
+                        }`}>
                         {policy.priority}
                       </span>
                     </div>
@@ -250,29 +231,15 @@ export function IAMCore({ user }: IAMCoreProps) {
                       {policy.condition}
                     </div>
                   </div>
-                  <span className={`ml-4 px-3 py-1 text-sm font-medium rounded ${
-                    policy.action === 'DENY' ? 'bg-red-100 text-red-700' :
-                    policy.action === 'REQUIRE_MFA' ? 'bg-orange-100 text-orange-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
+                  <span className={`ml-4 px-3 py-1 text-sm font-medium rounded ${policy.action === 'DENY' ? 'bg-red-100 text-red-700' :
+                      policy.action === 'REQUIRE_MFA' ? 'bg-orange-100 text-orange-700' :
+                        'bg-blue-100 text-blue-700'
+                    }`}>
                     {policy.action}
                   </span>
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Activity className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-900">
-                <p className="font-semibold mb-1">Policy Engine thời gian thực</p>
-                <p className="text-amber-700">
-                  Đánh giá rủi ro dựa trên ngữ cảnh (IP, thiết bị, thời gian, vị trí) để cấp quyền động. 
-                  Mọi request đều được kiểm tra trước khi cho phép truy cập.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       )}
