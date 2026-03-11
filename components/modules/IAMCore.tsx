@@ -55,10 +55,36 @@ export function IAMCore({ user }: IAMCoreProps) {
   ];
 
   const rbacRoles = [
-    { role: 'System Admin', users: 5, permissions: ['*'] },
-    { role: 'HR Manager', users: 8, permissions: ['hr:*', 'employee:read'] },
-    { role: 'HR Staff', users: 12, permissions: ['employee:read', 'leave:manage'] },
-    { role: 'Employee', users: 120, permissions: ['self:read', 'self:update'] },
+    {
+      role: 'System Administrator',
+      users: 2,
+      permissions: ['all_access'],
+      description: 'Toàn quyền quản trị hệ thống và cấu hình hạ tầng.'
+    },
+    {
+      role: 'HR Director',
+      users: 3,
+      permissions: ['hr:write', 'payroll:read', 'recruitment:manage'],
+      description: 'Quản lý toàn bộ nhân sự và xem báo cáo lương cao cấp.'
+    },
+    {
+      role: 'Payroll Specialist',
+      users: 5,
+      permissions: ['payroll:write', 'compensation:manage', 'biometric:verify'],
+      description: 'Chuyên viên xử lý lương, yêu cầu xác thực sinh trắc học khi duyệt.'
+    },
+    {
+      role: 'Department Manager',
+      users: 15,
+      permissions: ['team:read', 'leave:approve', 'performance:review'],
+      description: 'Quản lý trực tiếp, phê duyệt nghỉ phép và đánh giá nhân viên.'
+    },
+    {
+      role: 'Regular Employee',
+      users: 250,
+      permissions: ['self:profile', 'self:attendance', 'self:payslip'],
+      description: 'Nhân viên chính thức, truy cập hồ sơ cá nhân và bảng lương.'
+    },
   ];
 
   return (
@@ -91,8 +117,8 @@ export function IAMCore({ user }: IAMCoreProps) {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
               >
                 <Icon className="w-4 h-4" />
@@ -161,7 +187,7 @@ export function IAMCore({ user }: IAMCoreProps) {
               <div className="text-sm text-blue-900">
                 <p className="font-semibold mb-1">Zero Trust Control</p>
                 <p className="text-blue-700">
-                  MFA/2FA bắt buộc cho tất cả người dùng. Hỗ trợ WebAuthn/FIDO2 
+                  MFA/2FA bắt buộc cho tất cả người dùng. Hỗ trợ WebAuthn/FIDO2
                   cho trải nghiệm passwordless an toàn.
                 </p>
               </div>
@@ -172,23 +198,40 @@ export function IAMCore({ user }: IAMCoreProps) {
 
       {activeTab === 'authz' && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Phân quyền RBAC</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Phân quyền dựa trên vai trò (RBAC)</h3>
+            <button className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors">
+              + Thêm vai trò
+            </button>
+          </div>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4">
             {rbacRoles.map((role, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{role.role}</h4>
-                    <p className="text-sm text-gray-600">{role.users} người dùng</p>
+              <div key={index} className="border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all bg-white">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-bold text-gray-900 text-base">{role.role}</h4>
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full border border-gray-200">
+                        {role.users} nhân viên
+                      </span>
+                    </div>
+                    {/* Hiển thị thêm mô tả công việc của vai trò */}
+                    <p className="text-sm text-gray-500 italic leading-relaxed">
+                      {role.description}
+                    </p>
                   </div>
-                  <button className="text-sm text-blue-600 hover:text-blue-700">
-                    Chỉnh sửa
+                  <button className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                    Thiết lập quyền
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
                   {role.permissions.map((permission, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[11px] font-mono font-medium rounded border border-indigo-100 uppercase tracking-wider"
+                    >
                       {permission}
                     </span>
                   ))}
@@ -197,7 +240,7 @@ export function IAMCore({ user }: IAMCoreProps) {
             ))}
           </div>
         </div>
-      )}     
+      )}
     </div>
   );
 }
