@@ -46,15 +46,22 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
     },
   });
 
-  const handleLogin = async (data: LoginFormValues) => { setIsLoading(true);
+  const handleLogin = async (data: LoginFormValues) => {
+    setIsLoading(true);
     try {
-
       const response = await authService.login(data.email, data.password);
 
       if (response.accessToken) {
+        // Lưu vào localStorage (persistent storage)
         localStorage.setItem('accessToken', response.accessToken);
         localStorage.setItem('user', JSON.stringify(response.user));
-                document.cookie = `access_token=${response.accessToken}; path=/; max-age=${60 * 60 * 24}`;
+        
+        // Lưu vào sessionStorage (session storage - sẽ mất khi đóng tab)
+        sessionStorage.setItem('accessToken', response.accessToken);
+        sessionStorage.setItem('user', JSON.stringify(response.user));
+        
+        // Lưu vào cookie (để middleware có thể đọc được)
+        document.cookie = `access_token=${response.accessToken}; path=/; max-age=${60 * 60 * 24}`;
       }
 
       setIdentifier(data.email);

@@ -8,8 +8,11 @@ type FetchOptions = RequestInit & {
 export async function fetchClient<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { headers, ...rest } = options;
   
-  // Tự động lấy token từ localStorage (nếu có)
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  // Tự động lấy token từ sessionStorage (ưu tiên) hoặc localStorage
+  let token: string | null = null;
+  if (typeof window !== 'undefined') {
+    token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+  }
 
   const config: RequestInit = {
     ...rest,

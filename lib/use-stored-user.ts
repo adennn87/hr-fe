@@ -22,7 +22,8 @@ function readUserSnapshot(): User {
     return GUEST_USER;
   }
 
-  const raw = window.localStorage.getItem('user');
+  // Ưu tiên đọc từ sessionStorage, nếu không có thì đọc từ localStorage
+  const raw = window.sessionStorage.getItem('user') || window.localStorage.getItem('user');
 
   if (raw === cachedRawUser) {
     return cachedUser;

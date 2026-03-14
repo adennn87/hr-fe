@@ -28,8 +28,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router, user]);
 
   const onLogout = () => {
+    // Xóa localStorage
     localStorage.removeItem('user');
     localStorage.removeItem('accessToken');
+    
+    // Xóa sessionStorage
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('accessToken');
+    
+    // Xóa cookie
     document.cookie = 'access_token=; path=/; max-age=0';
     router.push('/login');
   };
