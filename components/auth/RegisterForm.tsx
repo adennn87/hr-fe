@@ -168,14 +168,17 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
     setIsLoading(true);
     try {
       // Gọi service đăng ký
-      await authService.register(data);
+      const response = await authService.register(data);
 
-      toast.success("Đăng ký thành công!", {
-        description: "Tài khoản đã được tạo. Vui lòng đăng nhập.",
+      // Hiển thị message từ API response
+      toast.success(response.message || "Đăng ký tài khoản thành công", {
+        description: "Vui lòng đăng nhập để tiếp tục.",
       });
 
-      // Quay lại trang login sau khi thành công
-      onBack();
+      // Chuyển sang trang đăng nhập sau 1.5 giây để user đọc được thông báo
+      setTimeout(() => {
+        onBack();
+      }, 1500);
     } catch (error: unknown) {
       console.error("Register error:", error);
       const errorMessage =

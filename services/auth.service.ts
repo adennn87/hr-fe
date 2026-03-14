@@ -20,7 +20,13 @@ export interface RegisterPayload {
 // Định nghĩa kiểu dữ liệu trả về từ API Login
 export interface LoginResponse {
   accessToken: string;
-  user: UserProfile; // Tận dụng interface UserProfile đã có ở types.ts
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    roleId: string;
+    permissions: string[];
+  };
 }
 
 // Định nghĩa kiểu dữ liệu cho payload Reset Password
@@ -61,17 +67,27 @@ export const authService = {
         user: DEMO_ADMIN.user,
       } satisfies LoginResponse;
     }
+    
     const response = await fetchClient<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+
+    // Map response từ API sang UserProfile format
+    const userProfile: UserProfile = {
+      id: response.user.id,
+      name: response.user.fullName, // Map fullName -> name
+      email: response.user.email,
+      role: response.user.roleId, // Map roleId -> role (hoặc có thể cần lookup role name từ roleId)
+      department: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
+      location: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
+      avatar: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
+      mfaEnabled: false, // Mặc định false, có thể cần check từ API hoặc profile
+    };
+
     return {
-      ...response,
-      user: {
-        ...response.user,
-        // fallback để tài khoản mới (backend chưa trả mfaEnabled) vẫn vào luồng 2FA
-        mfaEnabled: response.user.mfaEnabled ?? true,
-      },
+      accessToken: response.accessToken,
+      user: userProfile,
     };
   },
 
@@ -80,24 +96,28 @@ export const authService = {
    * @param data Dữ liệu từ form đăng ký
    */
   async register(data: RegisterFormValues) {
-    // Nếu backend cần format lại dateOfBirth hoặc gender, xử lý ở đây trước khi gửi
+    // Format gender từ 'male'/'female'/'other' thành 'Male'/'Female'/'Other' để khớp với API
+    const genderMap: Record<string, string> = {
+      'male': 'Male',
+      'female': 'Female',
+      'other': 'Other'
+    };
 
     const payload: RegisterPayload = {
       email: data.email,
       password: data.password,
       full_name: data.full_name,
       phoneNumber: data.phoneNumber,
-      gender: data.gender,
+      gender: genderMap[data.gender] || data.gender, // Format gender
       dateOfBirth: data.dateOfBirth,
       address: data.address,
       department: data.department,
       position: data.position,
       citizen_Id: data.citizen_Id,
-      mfaEnabled: false, // Mặc định tắt MFA khi đăng ký, user có thể bật sau trong profile
-      taxCode: data.taxCode, // Gửi taxCode nếu có
+      taxCode: data.taxCode || undefined, // Gửi taxCode nếu có
     };
-    // Ví dụ: const payload = { ...data, gender: data.gender === 'male' ? 1 : 0 };
-    return fetchClient('/auth/register', {
+
+    return fetchClient<{ message: string; success: boolean }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
