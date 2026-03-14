@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Users, Building2, User, Laptop, Lock, Eye, EyeOff,
   Plus, Pencil, Trash2, Search, ChevronRight, CheckCircle2,
-  Mail, Fingerprint
+  Mail, Fingerprint, Loader2
 } from 'lucide-react';
 import type { User as UserType } from '@/lib/auth-types';
+import { employeeService, type Employee } from '@/services/employee.service';
+import { assetService, type AllocatedAsset } from '@/services/asset.service';
+import { toast } from 'sonner';
 
 interface CoreHRProps {
   user: UserType;
@@ -58,24 +61,217 @@ export function CoreHR({ user }: CoreHRProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [employeeForm, setEmployeeForm] = useState<EmployeeFormData>(defaultEmployeeForm);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [departmentsData, setDepartmentsData] = useState<Array<{
+    department: string;
+    users: Employee[];
+  }>>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isLoadingEmployeeDetail, setIsLoadingEmployeeDetail] = useState(false);
+  const [allocatedAssets, setAllocatedAssets] = useState<AllocatedAsset[]>([]);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
 
   // State quản lý việc đóng/mở danh sách nhân sự trong phòng ban
   const [expandedDepts, setExpandedDepts] = useState<string[]>([]);
 
-  const [employees, setEmployees] = useState([
-    { id: 'EMP-2024-001', fullName: 'Nguyễn Văn An', email: 'an.nv@hr.com.vn', department: 'IT', role: 'System Admin', phone: '0912345678' },
-    { id: 'EMP-2024-014', fullName: 'Trần Thị Bình', email: 'binh.tt@hr.com.vn', department: 'HR', role: 'HR Manager', phone: '0988776655' },
-    { id: 'EMP-2024-027', fullName: 'Phạm Thị Dung', email: 'dung.pt@hr.com.vn', department: 'Finance', role: 'Accountant', phone: '0900112233' },
-    { id: 'EMP-2024-056', fullName: 'Lê Văn Cường', email: 'cuong.lv@hr.com.vn', department: 'Sales', role: 'Sales Lead', phone: '0933445566' },
-  ]);
+  // Fetch employees theo department từ API
+  useEffect(() => {
+    fetchEmployeesByDepartment();
+  }, []);
 
-  const orgChart = [
-    { id: '1', name: 'Ban Giám đốc', manager: 'CEO', employees: 3, level: 0, deptKey: 'Management' },
-    { id: '2', name: 'Phòng IT', parent: '1', manager: 'Nguyễn Văn An', employees: 15, level: 1, deptKey: 'IT' },
-    { id: '3', name: 'Phòng HR', parent: '1', manager: 'Trần Thị Bình', employees: 8, level: 1, deptKey: 'HR' },
-    { id: '4', name: 'Phòng Sales', parent: '1', manager: 'Lê Văn Cường', employees: 25, level: 1, deptKey: 'Sales' },
-    { id: '5', name: 'Phòng Finance', parent: '1', manager: 'Phạm Thị Dung', employees: 12, level: 1, deptKey: 'Finance' },
-  ];
+
+  const fetchEmployeesByDepartment = async () => {
+    setIsLoadingEmployees(true);
+    try {
+      const data = await employeeService.getEmployeesByDepartment();
+      setDepartmentsData(data);
+    } catch (error: any) {
+      console.error('Error fetching employees by department:', error);
+      toast.error('Không thể tải sơ đồ tổ chức', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    } finally {
+      setIsLoadingEmployees(false);
+    }
+  };
+
+  const handleViewEmployee = async (employeeId: string) => {
+    setIsLoadingEmployeeDetail(true);
+    try {
+      // Thử tìm employee từ dữ liệu đã có trước
+      let employee: Employee | undefined = undefined;
+      
+      // Tìm trong departmentsData (org chart)
+      for (const group of departmentsData) {
+        employee = group.users.find(u => u.id === employeeId);
+        if (employee) break;
+      }
+      
+      // Nếu không tìm thấy, tìm trong allEmployees (profile tab)
+      if (!employee) {
+        employee = allEmployees.find(u => u.id === employeeId);
+      }
+      
+      // Nếu vẫn không tìm thấy, thử gọi API
+      if (!employee) {
+        try {
+          employee = await employeeService.getEmployeeById(employeeId);
+        } catch (apiError: any) {
+          // Nếu API fail, vẫn thử tìm lại trong dữ liệu đã có
+          console.warn('API call failed, using cached data:', apiError);
+        }
+      }
+      
+      if (employee) {
+        setSelectedEmployee(employee);
+        // Chuyển sang tab Profile khi xem chi tiết
+        setActiveTab('profile');
+        // Fetch assets cho employee này ngay lập tức (không await để không block UI)
+        fetchEmployeeAssets(employeeId).catch(err => {
+          console.warn('Failed to fetch assets:', err);
+        });
+      } else {
+        throw new Error('Không tìm thấy thông tin nhân sự');
+      }
+    } catch (error: any) {
+      console.error('Error fetching employee detail:', error);
+      toast.error('Không thể tải thông tin nhân sự', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    } finally {
+      setIsLoadingEmployeeDetail(false);
+    }
+  };
+
+  const fetchEmployeeAssets = async (employeeId: string) => {
+    if (!employeeId) {
+      console.warn('No employeeId provided for fetching assets');
+      return;
+    }
+    
+    setIsLoadingAssets(true);
+    try {
+      console.log('Fetching assets for employee:', employeeId);
+      const assets = await assetService.getAllocatedAssetsByEmployee(employeeId);
+      console.log('Fetched assets:', assets);
+      console.log('Assets count:', assets?.length || 0);
+      setAllocatedAssets(assets || []);
+      
+      // Log để debug
+      if (assets && assets.length > 0) {
+        console.log('Assets data:', JSON.stringify(assets, null, 2));
+      } else {
+        console.warn('No assets returned from API');
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching allocated assets:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Nếu là lỗi quyền, vẫn set empty array nhưng log warning
+      if (error.message?.includes('quyền') || error.message?.includes('permission') || error.message?.includes('403')) {
+        console.warn('⚠️ No permission to view assets, showing empty state');
+        setAllocatedAssets([]);
+      } else {
+        // Các lỗi khác vẫn set empty array
+        console.warn('⚠️ Error occurred, showing empty state');
+        setAllocatedAssets([]);
+      }
+    } finally {
+      setIsLoadingAssets(false);
+    }
+  };
+
+  // Fetch assets khi chuyển sang tab assets
+  // Nếu có selectedEmployee thì fetch assets của employee đó
+  // Nếu chưa có selectedEmployee thì fetch assets của user đang đăng nhập
+  useEffect(() => {
+    if (activeTab === 'assets') {
+      if (selectedEmployee?.id) {
+        // Có employee được chọn, fetch assets của employee đó
+        fetchEmployeeAssets(selectedEmployee.id);
+      } else if (user?.id) {
+        // Chưa chọn employee, fetch assets của user đang đăng nhập
+        console.log('No employee selected, fetching assets for logged-in user:', user.id);
+        fetchEmployeeAssets(user.id);
+      }
+    }
+  }, [activeTab, selectedEmployee?.id, user?.id]);
+
+  // Build org chart từ API response
+  const orgChart = useMemo(() => {
+    const departments: Array<{
+      id: string;
+      name: string;
+      manager: string;
+      employees: number;
+      level: number;
+      deptKey: string;
+      parent?: string;
+    }> = [];
+
+    // Tìm Ban Giám đốc (employees có position = CEO hoặc không có department)
+    let ceoEmployees: Employee[] = [];
+    let ceoManager = 'CEO';
+
+    departmentsData.forEach(group => {
+      const ceos = group.users.filter(u => u.position === 'CEO');
+      if (ceos.length > 0) {
+        ceoEmployees = ceoEmployees.concat(ceos);
+        ceoManager = ceos[0].fullName || 'CEO';
+      }
+    });
+
+    // Nếu không có CEO, tìm Manager đầu tiên
+    if (ceoEmployees.length === 0) {
+      departmentsData.forEach(group => {
+        const managers = group.users.filter(u => u.position === 'Manager');
+        if (managers.length > 0 && ceoManager === 'CEO') {
+          ceoManager = managers[0].fullName || 'CEO';
+        }
+      });
+    }
+
+    // Tạo Ban Giám đốc
+    if (ceoEmployees.length > 0 || departmentsData.length > 0) {
+      departments.push({
+        id: '1',
+        name: 'Ban Giám đốc',
+        manager: ceoManager,
+        employees: ceoEmployees.length,
+        level: 0,
+        deptKey: 'CEO',
+      });
+    }
+
+    // Tạo các phòng ban từ API response
+    departmentsData.forEach((group, index) => {
+      const deptName = group.department;
+      const deptUsers = group.users;
+      
+      // Tìm manager (ưu tiên Manager, sau đó CEO)
+      const manager = deptUsers.find(u => u.position === 'Manager')?.fullName ||
+                      deptUsers.find(u => u.position === 'CEO')?.fullName ||
+                      'Chưa có';
+
+      departments.push({
+        id: String(index + 2),
+        name: `Phòng ${deptName}`,
+        parent: '1',
+        manager: manager,
+        employees: deptUsers.length,
+        level: 1,
+        deptKey: deptName,
+      });
+    });
+
+    return departments;
+  }, [departmentsData]);
+
+  // Flatten tất cả employees để dùng cho profile tab
+  const employees = useMemo(() => {
+    return departmentsData.flatMap(group => group.users);
+  }, [departmentsData]);
 
   const tabs: { id: CoreHRTab; label: string; icon: typeof Building2 }[] = [
     { id: 'orgchart', label: 'Tổ chức', icon: Building2 },
@@ -83,18 +279,93 @@ export function CoreHR({ user }: CoreHRProps) {
     { id: 'assets', label: 'Tài sản', icon: Laptop },
   ];
 
-
   const isSystemAdmin = user.role === 'System Admin';
+
+  // Fetch tất cả employees cho profile tab (nếu cần)
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  
+  const fetchAllEmployees = async () => {
+    try {
+      const data = await employeeService.getAllEmployees();
+      // Flatten department và role objects
+      const flattened = data.map((emp: any) => ({
+        ...emp,
+        department: typeof emp.department === 'object' ? emp.department.name : emp.department,
+        role: typeof emp.role === 'object' ? emp.role.name : emp.role,
+      }));
+      setAllEmployees(flattened);
+    } catch (error: any) {
+      console.error('Error fetching all employees:', error);
+      toast.error('Không thể tải danh sách nhân sự', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'profile' && isSystemAdmin) {
+      fetchAllEmployees();
+    }
+  }, [activeTab, isSystemAdmin]);
+
+  // Tự động load profile của user đang đăng nhập khi chưa chọn employee và ở tab profile
+  useEffect(() => {
+    if (activeTab === 'profile' && !selectedEmployee && user?.id) {
+      console.log('No employee selected, loading profile for logged-in user:', user.id);
+      // Gọi trực tiếp API để load profile, không dùng handleViewEmployee để tránh setActiveTab
+      const loadUserProfile = async () => {
+        setIsLoadingEmployeeDetail(true);
+        try {
+          let employee: Employee | undefined = undefined;
+          
+          // Tìm trong departmentsData (org chart)
+          for (const group of departmentsData) {
+            employee = group.users.find(u => u.id === user.id);
+            if (employee) break;
+          }
+          
+          // Nếu không tìm thấy, tìm trong allEmployees (profile tab)
+          if (!employee) {
+            employee = allEmployees.find(u => u.id === user.id);
+          }
+          
+          // Nếu vẫn không tìm thấy, thử gọi API
+          if (!employee) {
+            try {
+              employee = await employeeService.getEmployeeById(user.id);
+            } catch (apiError: any) {
+              console.warn('API call failed, using cached data:', apiError);
+            }
+          }
+          
+          if (employee) {
+            setSelectedEmployee(employee);
+            // Fetch assets cho user này
+            fetchEmployeeAssets(user.id).catch(err => {
+              console.warn('Failed to fetch assets:', err);
+            });
+          }
+        } catch (error: any) {
+          console.error('Error loading user profile:', error);
+        } finally {
+          setIsLoadingEmployeeDetail(false);
+        }
+      };
+      
+      loadUserProfile();
+    }
+  }, [activeTab, user?.id, departmentsData, allEmployees]);
 
   const filteredEmployees = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return employees;
-    return employees.filter((emp) =>
+    const employeeList = activeTab === 'profile' && isSystemAdmin ? allEmployees : employees;
+    if (!keyword) return employeeList;
+    return employeeList.filter((emp) =>
       [emp.id, emp.fullName, emp.department, emp.role].some((value) =>
-        value.toLowerCase().includes(keyword)
+        value?.toLowerCase().includes(keyword)
       )
     );
-  }, [employees, searchTerm]);
+  }, [employees, allEmployees, searchTerm, activeTab, isSystemAdmin]);
 
   const openAddModal = () => {
     setEditingEmployeeId(null);
@@ -102,65 +373,90 @@ export function CoreHR({ user }: CoreHRProps) {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (emp: typeof employees[number]) => {
+  const openEditModal = (emp: Employee) => {
     setEditingEmployeeId(emp.id);
     setEmployeeForm({
       ...defaultEmployeeForm,
       id: emp.id,
-      fullName: emp.fullName,
-      email: emp.email,
-      department: emp.department,
-      position: emp.role,
-      role: emp.role,
-      phoneNumber: emp.phone,
+      fullName: emp.fullName || '',
+      email: emp.email || '',
+      department: emp.department || '',
+      position: emp.position || '',
+      role: typeof emp.role === 'string' ? emp.role : emp.role?.name || '',
+      phoneNumber: emp.phoneNumber || '',
+      gender: emp.gender || 'male',
+      dateOfBirth: emp.dateOfBirth || '',
+      citizen_Id: emp.citizen_Id || '',
+      address: emp.address || '',
+      taxCode: emp.taxCode || '',
+      status: emp.status || 'active',
+      isActive: emp.isActive ?? true,
     });
     setIsModalOpen(true);
   };
 
-  const handleDeleteEmployee = (employeeId: string) => {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId));
+  const handleDeleteEmployee = async (employeeId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa nhân sự này?')) return;
+
+    try {
+      await employeeService.deleteEmployee(employeeId);
+      toast.success('Xóa nhân sự thành công');
+      // Refresh data
+      await fetchEmployeesByDepartment();
+      if (activeTab === 'profile' && isSystemAdmin) {
+        await fetchAllEmployees();
+      }
+      // Clear selected employee if deleted
+      if (selectedEmployee?.id === employeeId) {
+        setSelectedEmployee(null);
+      }
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      toast.error('Không thể xóa nhân sự', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    }
   };
 
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const payload = {
-      ...employeeForm,
-      dateOfBirth: employeeForm.dateOfBirth ? new Date(employeeForm.dateOfBirth) : null,
+    const payload: Partial<Employee> = {
+      fullName: employeeForm.fullName,
+      email: employeeForm.email,
+      phoneNumber: employeeForm.phoneNumber,
+      gender: employeeForm.gender,
+      dateOfBirth: employeeForm.dateOfBirth,
+      citizen_Id: employeeForm.citizen_Id,
+      department: employeeForm.department,
+      position: employeeForm.position,
+      address: employeeForm.address,
+      taxCode: employeeForm.taxCode,
+      status: employeeForm.status,
+      isActive: employeeForm.isActive,
+      ...(employeeForm.password && { password: employeeForm.password }),
     };
 
-    if (editingEmployeeId) {
-      setEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === editingEmployeeId
-            ? {
-              ...emp,
-              fullName: employeeForm.fullName,
-              email: employeeForm.email,
-              department: employeeForm.department,
-              role: employeeForm.role,
-              phone: employeeForm.phoneNumber,
-            }
-            : emp
-        )
-      );
-    } else {
-      const generatedId = employeeForm.id.trim() || `EMP-${new Date().getFullYear()}-${String(employees.length + 1).padStart(3, '0')}`;
-      setEmployees((prev) => [
-        ...prev,
-        {
-          id: generatedId,
-          fullName: employeeForm.fullName,
-          email: employeeForm.email,
-          department: employeeForm.department,
-          role: employeeForm.role,
-          phone: employeeForm.phoneNumber,
-        },
-      ]);
+    try {
+      if (editingEmployeeId) {
+        await employeeService.updateEmployee(editingEmployeeId, payload);
+        toast.success('Cập nhật nhân sự thành công');
+      } else {
+        await employeeService.createEmployee(payload);
+        toast.success('Tạo nhân sự mới thành công');
+      }
+      setIsModalOpen(false);
+      // Refresh data
+      await fetchEmployeesByDepartment();
+      if (activeTab === 'profile' && isSystemAdmin) {
+        await fetchAllEmployees();
+      }
+    } catch (error: any) {
+      console.error('Error saving employee:', error);
+      toast.error(editingEmployeeId ? 'Không thể cập nhật nhân sự' : 'Không thể tạo nhân sự', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
     }
-
-    console.log('CreateUserDto payload', payload);
-    setIsModalOpen(false);
   };
 
 
@@ -215,13 +511,39 @@ export function CoreHR({ user }: CoreHRProps) {
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-bold text-slate-900">Sơ đồ tổ chức trực tuyến</h3>
-              <Badge className="bg-purple-50 text-purple-600 border-purple-100 px-3 py-1">Cập nhật thực tế</Badge>
+              <span className="px-3 py-1 bg-purple-50 text-purple-600 border border-purple-100 rounded-full text-[10px] font-black uppercase">Cập nhật thực tế</span>
             </div>
 
-            <div className="grid gap-4">
-              {orgChart.map((dept) => {
-                const isExpanded = expandedDepts.includes(dept.id);
-                const deptEmps = employees.filter(e => e.department === dept.deptKey);
+            {isLoadingEmployees ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                <span className="ml-2 text-slate-500">Đang tải sơ đồ tổ chức...</span>
+              </div>
+            ) : orgChart.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-[20px] p-8 text-center">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Building2 className="w-8 h-8 text-slate-400" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-900 mb-2">Chưa có dữ liệu tổ chức</h4>
+                <p className="text-slate-500 text-sm">Sơ đồ tổ chức sẽ được hiển thị khi có dữ liệu nhân sự.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {orgChart.map((dept) => {
+                  const isExpanded = expandedDepts.includes(dept.id);
+                  // Lấy employees từ departmentsData
+                  let deptEmps: Employee[] = [];
+                  if (dept.deptKey === 'CEO') {
+                    // Ban Giám đốc: lấy tất cả employees có position = CEO
+                    departmentsData.forEach(group => {
+                      const ceos = group.users.filter(u => u.position === 'CEO');
+                      deptEmps = deptEmps.concat(ceos);
+                    });
+                  } else {
+                    // Các phòng ban khác: lấy từ departmentsData
+                    const group = departmentsData.find(g => g.department === dept.deptKey);
+                    deptEmps = group ? group.users : [];
+                  }
 
                 return (
                   <div key={dept.id} style={{ marginLeft: `${dept.level * 2}rem` }} className="space-y-3">
@@ -250,43 +572,215 @@ export function CoreHR({ user }: CoreHRProps) {
                     {/* Danh sách nhân sự chi tiết khi mở rộng */}
                     {isExpanded && (
                       <div className="ml-6 border-l-2 border-purple-100 pl-6 space-y-2 animate-in slide-in-from-top-2 duration-300">
-                        {deptEmps.length > 0 ? deptEmps.map(emp => (
-                          <div key={emp.id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-slate-200 hover:bg-white transition-all group">
+                        {isLoadingEmployees ? (
+                          <div className="p-4 flex items-center gap-2 text-slate-400">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-xs">Đang tải...</span>
+                          </div>
+                        ) : deptEmps.length > 0 ? deptEmps.map(emp => (
+                          <div 
+                            key={emp.id} 
+                            onClick={() => handleViewEmployee(emp.id)}
+                            className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-purple-200 hover:bg-white transition-all group cursor-pointer"
+                          >
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 bg-white border border-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm">
-                                {emp.fullName.split(' ').pop()?.charAt(0)}
+                                {(emp.fullName || 'U').split(' ').pop()?.charAt(0) || 'U'}
                               </div>
                               <div>
-                                <div className="text-sm font-bold text-slate-800 group-hover:text-purple-700">{emp.fullName}</div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{emp.role}</div>
+                                <div className="text-sm font-bold text-slate-800 group-hover:text-purple-700">{emp.fullName || 'N/A'}</div>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                                  {emp.position === 'Manager' ? 'QUẢN LÝ' : emp.position === 'CEO' ? 'CEO' : (emp.position || 'EMPLOYEE')}
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="hidden md:flex flex-col items-end">
-                                <span className="text-[10px] font-mono text-slate-400">{emp.email}</span>
+                                <span className="text-[10px] font-mono text-slate-400">{emp.email || 'N/A'}</span>
                                 <span className="text-[10px] font-bold text-slate-500">{emp.id}</span>
                               </div>
-                              <button className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewEmployee(emp.id);
+                                }}
+                                className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors"
+                              >
                                 <ChevronRight className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
                         )) : (
-                          <div className="p-4 text-xs text-slate-400 italic bg-slate-50/50 rounded-xl">Dữ liệu nhân sự chi tiết đang được đồng bộ...</div>
+                          <div className="p-4 text-xs text-slate-400 italic bg-slate-50/50 rounded-xl">Chưa có nhân sự trong phòng ban này</div>
                         )}
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {/* --- PROFILE TAB --- */}
         {activeTab === 'profile' && (
           <div className="space-y-6">
-            {isSystemAdmin ? (
+            {selectedEmployee ? (
+              /* Hiển thị chi tiết nhân viên được chọn */
+              <div className="bg-white border border-slate-200 rounded-[32px] p-10 shadow-sm relative overflow-hidden">
+                {isLoadingEmployeeDetail ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                    <span className="ml-2 text-slate-500">Đang tải thông tin nhân sự...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="absolute top-0 right-0 p-8 flex items-center gap-4">
+                      <button 
+                        onClick={() => {
+                          setShowSensitiveData(!showSensitiveData);
+                        }} 
+                        className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-purple-600 transition-all uppercase tracking-widest"
+                      >
+                        {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showSensitiveData ? 'Ẩn thông tin' : 'Xem thông tin PII'}
+                      </button>
+                    </div>
+
+                    <div className="flex items-start gap-6 mb-8">
+                      <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg">
+                        {(selectedEmployee.fullName || 'U').split(' ').pop()?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-black text-slate-900 mb-2">
+                          {selectedEmployee.position === 'Manager' ? 'Quản lý' : 
+                           selectedEmployee.position === 'CEO' ? 'CEO' : 
+                           selectedEmployee.position || 
+                           (typeof selectedEmployee.role === 'string' ? selectedEmployee.role : selectedEmployee.role?.name) || 
+                           'Nhân viên'}
+                        </h3>
+                        <p className="text-slate-500 text-sm">{selectedEmployee.fullName}</p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedEmployee(null)}
+                        className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+                      >
+                        Quay lại
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {/* Cột 1: Thông tin cơ bản */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Mã nhân viên</div>
+                          <p className="text-base font-bold text-slate-900">{selectedEmployee.id}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            CCCD/ID Number
+                          </div>
+                          <p className="text-base font-bold text-slate-900">
+                            {showSensitiveData ? (selectedEmployee.citizen_Id || 'N/A') : maskData(selectedEmployee.citizen_Id || '')}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Giới tính</div>
+                          <p className="text-base font-bold text-slate-900">
+                            {selectedEmployee.gender === 'male' ? 'Nam' : selectedEmployee.gender === 'female' ? 'Nữ' : selectedEmployee.gender || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Ngày sinh</div>
+                          <p className="text-base font-bold text-slate-900">
+                            {selectedEmployee.dateOfBirth ? new Date(selectedEmployee.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Cột 2: Thông tin liên hệ */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Email công việc</div>
+                          <p className="text-base font-bold text-slate-900">{selectedEmployee.email || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            Số điện thoại
+                          </div>
+                          <p className="text-base font-bold text-slate-900">
+                            {showSensitiveData ? (selectedEmployee.phoneNumber || 'N/A') : maskData(selectedEmployee.phoneNumber || '')}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            Mã số thuế
+                          </div>
+                          <p className="text-base font-bold text-slate-900">
+                            {showSensitiveData ? (selectedEmployee.taxCode || 'N/A') : maskData(selectedEmployee.taxCode || '')}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Địa chỉ</div>
+                          <p className="text-base font-bold text-slate-900">{selectedEmployee.address || 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      {/* Cột 3: Thông tin công việc */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Phòng ban</div>
+                          <p className="text-base font-bold text-slate-900">
+                            {typeof selectedEmployee.department === 'object' 
+                              ? selectedEmployee.department.name 
+                              : selectedEmployee.department || 'N/A'}
+                          </p>
+                          {typeof selectedEmployee.department === 'object' && selectedEmployee.department.description && (
+                            <p className="text-xs text-slate-500 mt-1">{selectedEmployee.department.description}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Chức vụ</div>
+                          <p className="text-base font-bold text-slate-900">
+                            {selectedEmployee.position === 'Manager' ? 'Quản lý' : 
+                             selectedEmployee.position === 'CEO' ? 'CEO' : 
+                             selectedEmployee.position === 'Employee' ? 'Nhân viên' :
+                             selectedEmployee.position || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Vai trò</div>
+                          <p className="text-base font-bold text-slate-900">
+                            {typeof selectedEmployee.role === 'object' 
+                              ? selectedEmployee.role.name 
+                              : selectedEmployee.role || 'N/A'}
+                          </p>
+                          {typeof selectedEmployee.role === 'object' && selectedEmployee.role.description && (
+                            <p className="text-xs text-slate-500 mt-1">{selectedEmployee.role.description}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Trạng thái</div>
+                          <p className="text-base font-bold text-slate-900">
+                            <span className={`px-3 py-1 rounded-lg text-xs font-black ${
+                              selectedEmployee.status === 'Active' || selectedEmployee.isActive
+                                ? 'bg-emerald-50 text-emerald-600'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {selectedEmployee.status || (selectedEmployee.isActive ? 'Active' : 'Inactive')}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : isSystemAdmin ? (
               <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="relative flex-1 max-w-md">
@@ -317,7 +811,11 @@ export function CoreHR({ user }: CoreHRProps) {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {filteredEmployees.map((emp) => (
-                        <tr key={emp.id} className="hover:bg-slate-50/30 transition-colors group">
+                        <tr 
+                          key={emp.id} 
+                          onClick={() => handleViewEmployee(emp.id)}
+                          className="hover:bg-slate-50/30 transition-colors group cursor-pointer"
+                        >
                           <td className="px-8 py-5">
                             <div className="font-bold text-slate-900">{emp.fullName}</div>
                             <div className="text-xs font-mono text-slate-400">{emp.id}</div>
@@ -329,13 +827,19 @@ export function CoreHR({ user }: CoreHRProps) {
                           <td className="px-8 py-5 text-right">
                             <div className="flex justify-end gap-1">
                               <button
-                                onClick={() => openEditModal(emp)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewEmployee(emp.id);
+                                }}
                                 className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-purple-600"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => handleDeleteEmployee(emp.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEmployee(emp.id);
+                                }}
                                 className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-red-600"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -391,28 +895,115 @@ export function CoreHR({ user }: CoreHRProps) {
           </div>
         )}
 
-        {/* --- ASSETS TAB (Làm đẹp lại theo phong cách Grid) --- */}
+        {/* --- ASSETS TAB --- */}
         {activeTab === 'assets' && (
           <div className="space-y-6">
-            <h3 className="text-lg font-bold text-slate-900 px-2">Thiết bị được cấp phát</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tabs.map((asset) => (
-                <div key={asset.id} className="bg-white border border-slate-200 rounded-[24px] p-6 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-inner">
-                      <Laptop className="w-6 h-6" />
-                    </div>
-                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px]">Sẵn sàng sử dụng</Badge>
-                  </div>
-                  <h4 className="font-black text-slate-900 text-lg mb-1">{asset.model}</h4>
-                  <p className="text-xs font-mono text-slate-400 mb-6">SN: {asset.serial}</p>
-                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase border-t border-slate-50 pt-4">
-                    <span>Cấp ngày</span>
-                    <span className="text-slate-900">{asset.assignedDate}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-lg font-bold text-slate-900">
+                {selectedEmployee 
+                  ? `Thiết bị được cấp phát - ${selectedEmployee.fullName}` 
+                  : `Thiết bị được cấp phát - ${user.name || user.email}`}
+              </h3>
+              {!selectedEmployee && (
+                <p className="text-sm text-slate-500">Đang hiển thị tài sản của bạn</p>
+              )}
             </div>
+
+            {selectedEmployee || user?.id ? (
+              <>
+                {isLoadingAssets ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                    <span className="ml-2 text-slate-500">Đang tải danh sách tài sản...</span>
+                  </div>
+                ) : allocatedAssets.length === 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-[24px] p-12 text-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Laptop className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900 mb-2">Chưa có tài sản được cấp phát</h4>
+                    <p className="text-slate-500 text-sm">
+                      {selectedEmployee 
+                        ? 'Nhân viên này chưa được cấp phát thiết bị nào.' 
+                        : 'Bạn chưa được cấp phát thiết bị nào.'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Debug: Employee ID = {selectedEmployee?.id || user?.id}, Assets count = {allocatedAssets.length}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {allocatedAssets.map((allocatedAsset) => {
+                      const asset = allocatedAsset.asset;
+                      const statusColor = allocatedAsset.status === 'allocated' 
+                        ? 'bg-emerald-50 text-emerald-600' 
+                        : allocatedAsset.status === 'returned'
+                        ? 'bg-slate-100 text-slate-600'
+                        : 'bg-amber-50 text-amber-600';
+                      
+                      const statusText = allocatedAsset.status === 'allocated' 
+                        ? 'Đang sử dụng' 
+                        : allocatedAsset.status === 'returned'
+                        ? 'Đã trả lại'
+                        : allocatedAsset.status;
+
+                      return (
+                        <div key={allocatedAsset.id} className="bg-white border border-slate-200 rounded-[24px] p-6 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-inner">
+                              <Laptop className="w-6 h-6" />
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${statusColor}`}>
+                              {statusText}
+                            </span>
+                          </div>
+                          <h4 className="font-black text-slate-900 text-lg mb-1">{asset.name}</h4>
+                          <p className="text-xs font-mono text-slate-400 mb-2">SN: {asset.serialNumber}</p>
+                          <p className="text-xs text-slate-500 mb-1">
+                            <span className="font-bold">Mã tài sản:</span> {asset.assetCode}
+                          </p>
+                          <p className="text-xs text-slate-500 mb-1">
+                            <span className="font-bold">Hãng:</span> {asset.brand} - {asset.model}
+                          </p>
+                          <p className="text-xs text-slate-500 mb-6">
+                            <span className="font-bold">Loại:</span> {asset.category}
+                          </p>
+                          <div className="space-y-2 border-t border-slate-50 pt-4">
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                              <span>Cấp ngày</span>
+                              <span className="text-slate-900">
+                                {allocatedAsset.allocatedDate ? new Date(allocatedAsset.allocatedDate).toLocaleDateString('vi-VN') : 'N/A'}
+                              </span>
+                            </div>
+                            {allocatedAsset.returnedDate && (
+                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                                <span>Trả lại</span>
+                                <span className="text-slate-900">
+                                  {new Date(allocatedAsset.returnedDate).toLocaleDateString('vi-VN')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {allocatedAsset.note && (
+                            <p className="text-xs text-slate-400 mt-4 pt-4 border-t border-slate-50 italic">
+                              {allocatedAsset.note}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-[24px] p-12 text-center">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Laptop className="w-8 h-8 text-slate-400" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-900 mb-2">Không thể tải tài sản</h4>
+                <p className="text-slate-500 text-sm">Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -457,6 +1048,7 @@ export function CoreHR({ user }: CoreHRProps) {
           </div>
         </div>
       )}
+
     </div>
   );
 }
@@ -488,14 +1080,5 @@ function FormField({
         className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
       />
     </label>
-  );
-}
-
-// Custom Badge component
-function Badge({ children, className = "" }: { children: React.ReactNode, className?: string }) {
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${className}`}>
-      {children}
-    </span>
   );
 }
