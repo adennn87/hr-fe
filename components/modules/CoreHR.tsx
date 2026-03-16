@@ -360,11 +360,26 @@ export function CoreHR({ user }: CoreHRProps) {
     const keyword = searchTerm.trim().toLowerCase();
     const employeeList = activeTab === 'profile' && isSystemAdmin ? allEmployees : employees;
     if (!keyword) return employeeList;
-    return employeeList.filter((emp) =>
-      [emp.id, emp.fullName, emp.department, emp.role].some((value) =>
-        value?.toLowerCase().includes(keyword)
-      )
-    );
+    return employeeList.filter((emp) => {
+      // Flatten department và role thành string để search
+      const deptStr = typeof emp.department === 'object' && emp.department !== null 
+        ? emp.department.name 
+        : emp.department || '';
+      const roleStr = typeof emp.role === 'object' && emp.role !== null 
+        ? emp.role.name 
+        : emp.role || '';
+      
+      const searchValues = [
+        emp.id,
+        emp.fullName,
+        deptStr,
+        roleStr
+      ].filter(Boolean); // Loại bỏ null/undefined
+      
+      return searchValues.some((value) =>
+        typeof value === 'string' && value.toLowerCase().includes(keyword)
+      );
+    });
   }, [employees, allEmployees, searchTerm, activeTab, isSystemAdmin]);
 
   const openAddModal = () => {
@@ -375,14 +390,22 @@ export function CoreHR({ user }: CoreHRProps) {
 
   const openEditModal = (emp: Employee) => {
     setEditingEmployeeId(emp.id);
+    // Flatten department và role thành string
+    const deptStr = typeof emp.department === 'object' && emp.department !== null
+      ? emp.department.name
+      : emp.department || '';
+    const roleStr = typeof emp.role === 'string' 
+      ? emp.role 
+      : (emp.role && typeof emp.role === 'object' ? emp.role.name : '') || '';
+    
     setEmployeeForm({
       ...defaultEmployeeForm,
       id: emp.id,
       fullName: emp.fullName || '',
       email: emp.email || '',
-      department: emp.department || '',
+      department: deptStr,
       position: emp.position || '',
-      role: typeof emp.role === 'string' ? emp.role : emp.role?.name || '',
+      role: roleStr,
       phoneNumber: emp.phoneNumber || '',
       gender: emp.gender || 'male',
       dateOfBirth: emp.dateOfBirth || '',
@@ -735,11 +758,11 @@ export function CoreHR({ user }: CoreHRProps) {
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Phòng ban</div>
                           <p className="text-base font-bold text-slate-900">
-                            {typeof selectedEmployee.department === 'object' 
+                            {selectedEmployee.department && typeof selectedEmployee.department === 'object' 
                               ? selectedEmployee.department.name 
-                              : selectedEmployee.department || 'N/A'}
+                              : (selectedEmployee.department || 'N/A')}
                           </p>
-                          {typeof selectedEmployee.department === 'object' && selectedEmployee.department.description && (
+                          {selectedEmployee.department && typeof selectedEmployee.department === 'object' && selectedEmployee.department.description && (
                             <p className="text-xs text-slate-500 mt-1">{selectedEmployee.department.description}</p>
                           )}
                         </div>
@@ -755,11 +778,11 @@ export function CoreHR({ user }: CoreHRProps) {
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Vai trò</div>
                           <p className="text-base font-bold text-slate-900">
-                            {typeof selectedEmployee.role === 'object' 
+                            {selectedEmployee.role && typeof selectedEmployee.role === 'object' 
                               ? selectedEmployee.role.name 
-                              : selectedEmployee.role || 'N/A'}
+                              : (selectedEmployee.role || 'N/A')}
                           </p>
-                          {typeof selectedEmployee.role === 'object' && selectedEmployee.role.description && (
+                          {selectedEmployee.role && typeof selectedEmployee.role === 'object' && selectedEmployee.role.description && (
                             <p className="text-xs text-slate-500 mt-1">{selectedEmployee.role.description}</p>
                           )}
                         </div>
@@ -821,9 +844,17 @@ export function CoreHR({ user }: CoreHRProps) {
                             <div className="text-xs font-mono text-slate-400">{emp.id}</div>
                           </td>
                           <td className="px-8 py-5">
-                            <span className="px-3 py-1 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-black">{emp.department}</span>
+                            <span className="px-3 py-1 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-black">
+                              {typeof emp.department === 'object' && emp.department !== null
+                                ? emp.department.name
+                                : emp.department || 'N/A'}
+                            </span>
                           </td>
-                          <td className="px-8 py-5 text-sm font-medium text-slate-600">{emp.role}</td>
+                          <td className="px-8 py-5 text-sm font-medium text-slate-600">
+                            {typeof emp.role === 'object' && emp.role !== null
+                              ? emp.role.name
+                              : emp.role || 'N/A'}
+                          </td>
                           <td className="px-8 py-5 text-right">
                             <div className="flex justify-end gap-1">
                               <button

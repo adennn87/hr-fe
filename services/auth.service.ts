@@ -146,14 +146,27 @@ export const authService = {
   },
 
   /**
-   * Xác thực 2 bước (MFA)
+   * Gửi OTP khi login (bước đầu tiên của login flow)
+   * @param email Email người dùng
+   * @param password Mật khẩu
+   */
+  async loginOtp(email: string, password: string) {
+    return fetchClient<{ message: string; success: boolean }>('/auth/loginOtp', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  /**
+   * Xác thực 2 bước (MFA) - Verify OTP và login
    * @param code Mã OTP từ ứng dụng Authenticator/Email
    * @param email Email người dùng
+   * @param password Mật khẩu (lấy từ sessionStorage)
    */
-  async verifyMfa(code: string, email: string) {
-    return fetchClient<LoginResponse>('/auth/verify-mfa', {
+  async verifyMfa(code: string, email: string, password: string) {
+    return fetchClient<LoginResponse>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ code, email })
+      body: JSON.stringify({ email, password, otp: code })
     });
   },
 

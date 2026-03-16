@@ -70,9 +70,47 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     }
   ];
 
+  // Helper function để normalize role name
+  const normalizeRole = (role: string): string => {
+    if (!role) return '';
+    const roleStr = typeof role === 'string' ? role : String(role);
+    return roleStr.trim();
+  };
+
+  // Helper function để check role match (case-insensitive và flexible matching)
+  const hasAccess = (moduleRoles: string[], userRole: string): boolean => {
+    const normalizedUserRole = normalizeRole(userRole).toLowerCase();
+    return moduleRoles.some(moduleRole => {
+      const normalizedModuleRole = normalizeRole(moduleRole).toLowerCase();
+      // Exact match
+      if (normalizedUserRole === normalizedModuleRole) return true;
+      // Partial match (e.g., "admin" matches "System Admin")
+      if (normalizedUserRole.includes('admin') && normalizedModuleRole.includes('admin')) return true;
+      if (normalizedUserRole.includes('manager') && normalizedModuleRole.includes('manager')) return true;
+      if (normalizedUserRole.includes('employee') && normalizedModuleRole.includes('employee')) return true;
+      // Match các biến thể khác
+      if ((normalizedUserRole === 'admin' || normalizedUserRole === 'system admin') && normalizedModuleRole.includes('admin')) return true;
+      if ((normalizedUserRole === 'hr manager' || normalizedUserRole === 'manager') && normalizedModuleRole.includes('manager')) return true;
+      return false;
+    });
+  };
+
   const accessibleModules = modules.filter(module => 
-    module.roles.includes(user.role)
+    hasAccess(module.roles, user.role)
   );
+
+  // Nếu không có module nào match, hiển thị tất cả (fallback)
+  // Hoặc có thể hiển thị message cảnh báo
+  const finalAccessibleModules = accessibleModules.length > 0 ? accessibleModules : modules;
+
+  // Debug logging để kiểm tra
+  if (accessibleModules.length === 0) {
+    console.warn('⚠️ No modules matched for role:', user.role);
+    console.log('Available roles in modules:', modules.flatMap(m => m.roles));
+    console.log('Showing all modules as fallback');
+  } else {
+    console.log('✅ User role:', user.role, '→ Accessible modules:', accessibleModules.length);
+  }
 
   const renderModule = () => {
     switch (activeModule) {
@@ -125,7 +163,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
                   <span className="text-sm opacity-90">Quyền truy cập</span>
                   <Users className="w-5 h-5" />
                 </div>
-                <p className="text-3xl font-bold">{accessibleModules.length}</p>
+                <p className="text-3xl font-bold">{finalAccessibleModules.length}</p>
                 <p className="text-xs opacity-75 mt-1">Phân hệ được phép</p>
               </div>
             </div>
@@ -134,16 +172,51 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Phân hệ của bạn</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {accessibleModules.map((module) => {
+                {finalAccessibleModules.map((module) => {
                   const Icon = module.icon;
+                  // Map color to Tailwind classes để tránh dynamic class issues
+                  const colorClasses = {
+                    blue: {
+                      border: 'border-blue-200 hover:border-blue-400',
+                      bg: 'bg-blue-100',
+                      text: 'text-blue-600'
+                    },
+                    purple: {
+                      border: 'border-purple-200 hover:border-purple-400',
+                      bg: 'bg-purple-100',
+                      text: 'text-purple-600'
+                    },
+                    green: {
+                      border: 'border-green-200 hover:border-green-400',
+                      bg: 'bg-green-100',
+                      text: 'text-green-600'
+                    },
+                    orange: {
+                      border: 'border-orange-200 hover:border-orange-400',
+                      bg: 'bg-orange-100',
+                      text: 'text-orange-600'
+                    },
+                    pink: {
+                      border: 'border-pink-200 hover:border-pink-400',
+                      bg: 'bg-pink-100',
+                      text: 'text-pink-600'
+                    },
+                    red: {
+                      border: 'border-red-200 hover:border-red-400',
+                      bg: 'bg-red-100',
+                      text: 'text-red-600'
+                    }
+                  };
+                  const colors = colorClasses[module.color as keyof typeof colorClasses] || colorClasses.blue;
+                  
                   return (
                     <button
                       key={module.id}
                       onClick={() => setActiveModule(module.id)}
-                      className={`bg-white border-2 border-${module.color}-200 hover:border-${module.color}-400 rounded-xl p-6 text-left transition-all hover:shadow-lg group`}
+                      className={`bg-white border-2 ${colors.border} rounded-xl p-6 text-left transition-all hover:shadow-lg group cursor-pointer`}
                     >
-                      <div className={`inline-flex items-center justify-center w-12 h-12 bg-${module.color}-100 rounded-lg mb-4 group-hover:scale-110 transition-transform`}>
-                        <Icon className={`w-6 h-6 text-${module.color}-600`} />
+                      <div className={`inline-flex items-center justify-center w-12 h-12 ${colors.bg} rounded-lg mb-4 group-hover:scale-110 transition-transform`}>
+                        <Icon className={`w-6 h-6 ${colors.text}`} />
                       </div>
                       <h4 className="font-semibold text-gray-900 mb-1">{module.name}</h4>
                       <p className="text-sm text-gray-600">{module.description}</p>

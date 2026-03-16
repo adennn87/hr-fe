@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
-import { UserProfile, MOCK_USERS } from '@/types/types';
+import { UserProfile } from '@/types/types';
+import { authService } from '@/services/auth.service';
 
 // Import component OTP xịn xò từ Shadcn
 import {
@@ -22,21 +23,95 @@ interface MfaFormProps {
 export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const handleVerify = async () => {
-    if (otp.length !== 6) return;
+    if (otp.length !== 6) {
+      toast.error("Vui lòng nhập đầy đủ 6 số OTP");
+      return;
+    }
     
     setIsLoading(true);
-    // Giả lập verify
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // Lấy email và password từ sessionStorage
+      const pendingEmail = sessionStorage.getItem('pendingLoginEmail');
+      const pendingPassword = sessionStorage.getItem('pendingLoginPassword');
+      
+      if (!pendingEmail || !pendingPassword) {
+        toast.error("Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại.");
+        onBack();
+        return;
+      }
+      
+      // Gọi API verify MFA với OTP, email và password
+      const response = await authService.verifyMfa(otp, pendingEmail, pendingPassword);
+      
+      if (response.accessToken) {
+        // Map response từ API sang UserProfile format
+        const userProfile: UserProfile = {
+          id: response.user.id,
+          name: response.user.fullName,
+          email: response.user.email,
+          role: response.user.roleId,
+          department: '',
+          location: '',
+          avatar: '',
+          mfaEnabled: true,
+        };
 
-    // Logic kiểm tra (đơn giản là đúng 6 số thì cho qua)
-    if (otp === "123456" || otp.length === 6) { // Mock logic
-      toast.success("Xác thực thành công!");
-      onLogin(MOCK_USERS[email]);
-    } else {
+        // Lưu vào localStorage (persistent storage)
+        localStorage.setItem('accessToken', response.accessToken);
+        localStorage.setItem('user', JSON.stringify(userProfile));
+        
+        // Lưu vào sessionStorage (session storage - sẽ mất khi đóng tab)
+        sessionStorage.setItem('accessToken', response.accessToken);
+        sessionStorage.setItem('user', JSON.stringify(userProfile));
+        
+        // Lưu vào cookie (để middleware có thể đọc được)
+        document.cookie = `access_token=${response.accessToken}; path=/; max-age=${60 * 60 * 24}`;
+        
+        // Xóa pending credentials sau khi login thành công
+        sessionStorage.removeItem('pendingLoginEmail');
+        sessionStorage.removeItem('pendingLoginPassword');
+        
+        toast.success("Xác thực thành công!");
+        onLogin(userProfile);
+      }
+    } catch (error: any) {
+      console.error('Error verifying OTP:', error);
+      toast.error("Mã xác thực không đúng", {
+        description: error.message || "Vui lòng thử lại"
+      });
+      setOtp(""); // Reset OTP để nhập lại
+    } finally {
       setIsLoading(false);
-      toast.error("Mã xác thực không đúng");
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setIsResending(true);
+    try {
+      // Lấy email và password từ sessionStorage
+      const pendingEmail = sessionStorage.getItem('pendingLoginEmail');
+      const pendingPassword = sessionStorage.getItem('pendingLoginPassword');
+      
+      if (!pendingEmail || !pendingPassword) {
+        toast.error("Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại.");
+        onBack();
+        return;
+      }
+      
+      // Gửi lại OTP
+      await authService.loginOtp(pendingEmail, pendingPassword);
+      toast.success("Mã OTP mới đã được gửi đến email của bạn");
+      setOtp(""); // Reset OTP
+    } catch (error: any) {
+      console.error('Error resending OTP:', error);
+      toast.error("Không thể gửi lại OTP", {
+        description: error.message || "Vui lòng thử lại sau"
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -78,7 +153,14 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
         </Button>
         
         <p className="text-xs text-slate-400">
-           Didn't receive code? <button className="text-blue-600 hover:underline font-medium">Resend</button>
+           Didn't receive code?{' '}
+           <button 
+             onClick={handleResendOtp}
+             disabled={isResending}
+             className="text-blue-600 hover:underline font-medium disabled:opacity-50"
+           >
+             {isResending ? 'Sending...' : 'Resend'}
+           </button>
         </p>
       </div>
     </div>

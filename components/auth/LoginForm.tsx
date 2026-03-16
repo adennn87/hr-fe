@@ -49,36 +49,24 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
   const handleLogin = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(data.email, data.password);
-
-      if (response.accessToken) {
-        // Lưu vào localStorage (persistent storage)
-        localStorage.setItem('accessToken', response.accessToken);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        
-        // Lưu vào sessionStorage (session storage - sẽ mất khi đóng tab)
-        sessionStorage.setItem('accessToken', response.accessToken);
-        sessionStorage.setItem('user', JSON.stringify(response.user));
-        
-        // Lưu vào cookie (để middleware có thể đọc được)
-        document.cookie = `access_token=${response.accessToken}; path=/; max-age=${60 * 60 * 24}`;
-      }
-
+      // Lưu email và password vào sessionStorage để dùng sau khi verify OTP
+      sessionStorage.setItem('pendingLoginEmail', data.email);
+      sessionStorage.setItem('pendingLoginPassword', data.password);
+      
+      // Gọi API loginOtp để gửi OTP
+      await authService.loginOtp(data.email, data.password);
+      
       setIdentifier(data.email);
-
-      // Kiểm tra logic MFA: 
-      // Nếu user bật MFA -> gọi onSuccess() để chuyển sang màn hình nhập OTP
-      // Nếu không -> Redirect vào Dashboard luôn (tùy luồng của bạn)
-      if (response.user.mfaEnabled) {
-          toast.info("Yêu cầu xác thực 2 bước (2FA)");
-          onSuccess(); // Chuyển sang form MFA
-      } else {
-          toast.success("Đăng nhập thành công!");
-          // Reload hoặc redirect vào trang chính
-          window.location.href = '/dashboard'; 
-      }
+      
+      // Luôn chuyển sang màn hình MFA sau khi gửi OTP thành công
+      toast.success("Mã OTP đã được gửi đến email của bạn");
+      onSuccess(); // Chuyển sang form MFA
 
     } catch (error: any) {
+      // Xóa pending credentials nếu lỗi
+      sessionStorage.removeItem('pendingLoginEmail');
+      sessionStorage.removeItem('pendingLoginPassword');
+      
       toast.error("Đăng nhập thất bại", {
         description: error.message || "Kiểm tra lại email hoặc mật khẩu"
       });
