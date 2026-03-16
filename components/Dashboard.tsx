@@ -22,15 +22,15 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
   const modules = [
     {
       id: 'iam' as ModuleType,
-      name: 'IAM Core',
-      description: 'Quản lý định danh & truy cập',
+      name: 'Access Management',
+      description: 'Quản lý định danh',
       icon: Shield,
       color: 'blue',
       roles: ['System Admin', 'HR Manager']
     },
     {
       id: 'coreHR' as ModuleType,
-      name: 'Hồ sơ & Tổ chức',
+      name: 'Profile & Organization',
       description: 'Core HR',
       icon: Users,
       color: 'purple',
@@ -42,7 +42,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
       description: 'C&B - Khu vực rủi ro cao',
       icon: DollarSign,
       color: 'green',
-      roles: ['System Admin', 'HR Manager', 'Employee']
+      roles: ['System Admin','Accountant',  'HR Manager', 'Employee']
     },
     {
       id: 'time' as ModuleType,
@@ -131,11 +131,8 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Xin chào, {user.name}!
+                Welcome, {user.name}!
               </h2>
-              <p className="text-gray-600">
-                Chào mừng đến với Hệ thống HR Zero Trust. Chọn một phân hệ để bắt đầu.
-              </p>
             </div>
 
             {/* Quick Stats */}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Shield, Users, Lock, Save, Plus, Briefcase, Key, Fingerprint, ChevronRight } from 'lucide-react';
+import { Shield, Lock, Save, Plus, Briefcase, Key, ChevronRight } from 'lucide-react';
 import { User } from '@/lib/auth-types';
 
 import {
@@ -17,20 +17,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 
 interface IAMCoreProps {
   user: User;
 }
 
 export function IAMCore({ user }: IAMCoreProps) {
-  const [activeTab, setActiveTab] = useState<'identity' | 'authz'>('authz');
+  const [activeTab, setActiveTab] = useState<'authz'>('authz');
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<any>(null);
@@ -54,14 +52,11 @@ export function IAMCore({ user }: IAMCoreProps) {
     }
   ];
 
-  const identities = [
-    { id: '1', name: 'Nguyễn Văn An', email: 'admin@company.vn', status: 'active', department: 'IT', syncSource: 'Google Workspace' },
-    { id: '2', name: 'Trần Thị Bình', email: 'hr@company.vn', status: 'active', department: 'HR', syncSource: 'Microsoft 365' },
-  ];
+
 
   const [rbacRoles, setRbacRoles] = useState([
     { role: 'System Administrator', users: 2, permissions: ['all_access'], description: 'Toàn quyền quản trị hệ thống và cấu hình hạ tầng.' },
-    { role: 'HR Director', users: 3, permissions: ['hr:write'], description: 'Quản lý toàn bộ nhân sự.' },
+    { role: 'HR Manager', users: 3, permissions: ['hr:write'], description: 'Quản lý toàn bộ nhân sự.' },
     { 
       role: 'Accountant', 
       users: 4, 
@@ -85,7 +80,7 @@ export function IAMCore({ user }: IAMCoreProps) {
             <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Identity & Access Management</h2>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Access Management</h2>
             <div className="flex items-center gap-2 mt-1">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
               <p className="text-sm text-slate-500 font-medium">Hệ thống Zero Trust đang hoạt động</p>
@@ -94,69 +89,12 @@ export function IAMCore({ user }: IAMCoreProps) {
         </div>
         
         <div className="flex gap-1 bg-slate-100/80 p-1 rounded-xl w-fit border border-slate-200/60">
-          {[
-            { id: 'identity', label: 'Định danh', icon: Users },
-            { id: 'authz', label: 'Phân quyền', icon: Lock },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-white text-slate-950 shadow-sm border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
+          
         </div>
       </div>
 
       {/* Content Area */}
       <div className="min-h-[500px]">
-        {activeTab === 'identity' && (
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Người dùng</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Nguồn đồng bộ</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {identities.map((id) => (
-                  <tr key={id.id} className="hover:bg-slate-50/50 transition-colors cursor-default">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                         <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs">
-                            {id.name.charAt(0)}
-                         </div>
-                         <div>
-                            <div className="font-semibold text-slate-900">{id.name}</div>
-                            <div className="text-xs text-slate-400 font-mono">{id.email}</div>
-                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none font-medium px-2.5 py-0.5">
-                        {id.syncSource}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
         {activeTab === 'authz' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
