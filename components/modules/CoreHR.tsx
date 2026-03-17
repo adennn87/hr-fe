@@ -894,10 +894,10 @@ export function CoreHR({ user }: CoreHRProps) {
                 </div>
                 <div className="flex items-center gap-6 mb-12">
                   <div className="w-20 h-20 bg-purple-100 rounded-3xl flex items-center justify-center text-2xl font-black text-purple-600">
-                    {user.name.charAt(0)}
+                    {user.fullName.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-slate-900">{user.name}</h3>
+                    <h3 className="text-3xl font-black text-slate-900">{user.fullName}</h3>
                     <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">{user.role} • {user.department}</p>
                   </div>
                 </div>
@@ -933,7 +933,7 @@ export function CoreHR({ user }: CoreHRProps) {
               <h3 className="text-lg font-bold text-slate-900">
                 {selectedEmployee 
                   ? `Thiết bị được cấp phát - ${selectedEmployee.fullName}` 
-                  : `Thiết bị được cấp phát - ${user.name || user.email}`}
+                  : `Thiết bị được cấp phát - ${user.fullName || user.email}`}
               </h3>
               {!selectedEmployee && (
                 <p className="text-sm text-slate-500">Đang hiển thị tài sản của bạn</p>

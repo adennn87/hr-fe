@@ -314,10 +314,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
                   errors.department ? "border-red-500" : "border-slate-200"
                 }`}
               >
-                {/* ✅ FIX: không dùng value="" để khỏi fail z.enum */}
                 <option value={Department.SelectDepartment}>Select department</option>
 
-                {/* ✅ tránh render trùng SelectDepartment */}
                 {Object.values(Department)
                   .filter((d) => d !== Department.SelectDepartment)
                   .map((department) => (
