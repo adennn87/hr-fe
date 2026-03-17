@@ -255,7 +255,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               <Label>
                 Date of Birth <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
+              <div className="relative">  
                 <Input
                   {...register("dateOfBirth")}
                   type="date"

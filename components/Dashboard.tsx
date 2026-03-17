@@ -126,12 +126,12 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
         return <ATS user={user} />;
       case 'admin':
         return <AdminAudit user={user} />;
-      default:
+      default:  
         return (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome, {user.name}!
+                Welcome, {user.fullName}!
               </h2>
             </div>
 

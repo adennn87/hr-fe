@@ -3,9 +3,9 @@ import { RegisterFormValues } from '@/components/auth/RegisterForm';
 import { UserProfile } from '@/types/types';
 
 export interface RegisterPayload {
+  fullName: string;
   email: string;
   password: string;
-  full_name: string;
   phoneNumber?: string;
   gender?: string;
   dateOfBirth?: string;
@@ -46,7 +46,7 @@ export const authService = {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPassword = password.trim();
 
-    
+
     const response = await fetchClient<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
@@ -85,7 +85,7 @@ export const authService = {
     const payload: RegisterPayload = {
       email: data.email,
       password: data.password,
-      full_name: data.full_name,
+      fullName: data.fullName,
       phoneNumber: data.phoneNumber,
       gender: genderMap[data.gender] || data.gender, // Format gender
       dateOfBirth: data.dateOfBirth,

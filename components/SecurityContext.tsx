@@ -12,7 +12,7 @@ interface SecurityContextProps {
 
 export function SecurityContext({ context, user, onLogout }: SecurityContextProps) {
   const [showDetails, setShowDetails] = useState(false);
-  const safeUserName = user.name?.trim() || 'User';
+  const safeUserName = user.fullName?.trim() || 'User';
   const hasAvatar = Boolean(user.avatar?.trim());
   const userInitial = safeUserName.charAt(0).toUpperCase();
 
