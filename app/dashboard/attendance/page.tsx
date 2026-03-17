@@ -5,7 +5,7 @@ import type { User } from '@/lib/auth-types';
 
 const fallbackUser: User = {
   id: 'u-003',
-  name: 'John Doe',
+  fullName: 'John Doe',
   email: 'employee@hr.com.vn',
   role: 'Employee',
   department: 'Sales',

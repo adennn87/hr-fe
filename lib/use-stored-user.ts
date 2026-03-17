@@ -5,7 +5,7 @@ import type { User } from '@/lib/auth-types';
 
 export const GUEST_USER: User = {
   id: 'guest-001',
-  name: 'Guest',
+  fullName: 'Guest',
   email: 'guest@hr.com.vn',
   role: 'Employee',
   department: 'General',
