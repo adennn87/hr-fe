@@ -79,17 +79,51 @@ export function CoreHR({ user }: CoreHRProps) {
     fetchEmployeesByDepartment();
   }, []);
 
-
+  /**
+   * Load dữ liệu tổ chức.
+   * Ưu tiên endpoint group-by-department; nếu backend lỗi (500) thì fallback sang getAllEmployees và tự group theo department trên FE.
+   */
   const fetchEmployeesByDepartment = async () => {
     setIsLoadingEmployees(true);
     try {
-      const data = await employeeService.getEmployeesByDepartment();
-      setDepartmentsData(data);
+      try {
+        // Thử gọi endpoint group-by-department (nếu backend OK sẽ dùng dữ liệu này)
+        const data = await employeeService.getEmployeesByDepartment();
+        setDepartmentsData(data);
+        return;
+      } catch (err) {
+        console.warn('group-by-department API failed, falling back to getAllEmployees():', err);
+      }
+
+      // Fallback: dùng getAllEmployees rồi group theo department ở FE
+      const allEmployees = await employeeService.getAllEmployees();
+
+      const deptMap = new Map<string, Employee[]>();
+
+      allEmployees.forEach((emp: any) => {
+        const deptName =
+          emp.department && typeof emp.department === 'object'
+            ? emp.department.name
+            : (emp.department || 'Khác');
+
+        if (!deptMap.has(deptName)) {
+          deptMap.set(deptName, []);
+        }
+        deptMap.get(deptName)!.push(emp);
+      });
+
+      const grouped = Array.from(deptMap.entries()).map(([department, users]) => ({
+        department,
+        users,
+      }));
+
+      setDepartmentsData(grouped);
     } catch (error: any) {
-      console.error('Error fetching employees by department:', error);
+      console.error('Error building org chart data:', error);
       toast.error('Không thể tải sơ đồ tổ chức', {
         description: error.message || 'Vui lòng thử lại sau',
       });
+      setDepartmentsData([]);
     } finally {
       setIsLoadingEmployees(false);
     }

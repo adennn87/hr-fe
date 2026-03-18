@@ -64,19 +64,40 @@ export const employeeService = {
       },
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
+      let errorMessage = `Error ${response.status}`;
+      let errorData: any = null;
+
+      try {
+        if (responseText) {
+          errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        }
+      } catch {
+        // responseText không phải JSON, giữ nguyên errorMessage
+      }
+
+      console.error('❌ Error fetching employees by department:', {
+        status: response.status,
+        errorMessage,
+        rawResponse: responseText?.slice(0, 500), // giới hạn log
+      });
+
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const data = responseText ? JSON.parse(responseText) : [];
     // Loại bỏ password từ response và flatten department object
     return data.map((group: any) => ({
       department: group.department,
       users: group.users.map((emp: any) => {
-        const { password, ...employeeWithoutPassword } = emp;
+        const { password, full_name, ...employeeWithoutPassword } = emp;
+        // Map full_name (snake_case) -> fullName (camelCase) nếu backend trả về snake_case
         return {
           ...employeeWithoutPassword,
+          fullName: emp.fullName || emp.full_name || '',
           department:
             emp.department && typeof emp.department === 'object'
               ? emp.department.name
@@ -121,10 +142,13 @@ export const employeeService = {
     }
 
     const data = await response.json();
-    // Loại bỏ password từ response để bảo mật
+    // Loại bỏ password từ response và map full_name -> fullName
     return data.map((emp: any) => {
-      const { password, ...employeeWithoutPassword } = emp;
-      return employeeWithoutPassword;
+      const { password, full_name, ...employeeWithoutPassword } = emp;
+      return {
+        ...employeeWithoutPassword,
+        fullName: emp.fullName || emp.full_name || '',
+      };
     });
   },
 
@@ -160,10 +184,11 @@ export const employeeService = {
     }
 
     const data = await response.json();
-    // Loại bỏ password và flatten department/role objects
-    const { password, ...employeeWithoutPassword } = data;
+    // Loại bỏ password và flatten department/role objects, map full_name -> fullName
+    const { password, full_name, ...employeeWithoutPassword } = data;
     return {
       ...employeeWithoutPassword,
+      fullName: data.fullName || data.full_name || '',
       department:
         data.department && typeof data.department === 'object'
           ? data.department.name

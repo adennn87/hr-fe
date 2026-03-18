@@ -52,10 +52,10 @@ export const authService = {
       body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
     });
 
-    // Map response từ API sang UserProfile format
+    // Map response từ API sang UserProfile format, map full_name -> fullName nếu backend trả về snake_case
     const userProfile: UserProfile = {
       id: response.user.id,
-      fullName: response.user.fullName, // Map fullName -> fullName
+      fullName: response.user.fullName || response.user.full_name || '', // Map fullName hoặc full_name -> fullName
       email: response.user.email,
       role: response.user.roleId, // Map roleId -> role (hoặc có thể cần lookup role name từ roleId)
       department: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau

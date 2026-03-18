@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, Calendar, MapPin, AlertCircle, CheckCircle, UserCheck, Plus, Loader2 } from 'lucide-react';
+import { Clock, Calendar, MapPin, AlertCircle, CheckCircle, UserCheck, Plus, Loader2, Settings, Pencil, Trash2 } from 'lucide-react';
 import { User } from '@/lib/auth-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { weeklyScheduleService, type CreateWeeklyScheduleRequest, type WeeklyScheduleDay } from '@/services/weekly-schedule.service';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { weeklyScheduleService, type CreateWeeklyScheduleRequest, type WeeklyScheduleDay, type WeeklySchedule } from '@/services/weekly-schedule.service';
+import { leaveRequestService, type LeaveRequest, type LeaveType } from '@/services/leave-request.service';
 import { employeeService, type Employee } from '@/services/employee.service';
 import { toast } from 'sonner';
 
@@ -20,6 +28,24 @@ interface TimeAttendanceProps {
 export function TimeAttendance({ user }: TimeAttendanceProps) {
   const [activeTab, setActiveTab] = useState< 'leave' | 'schedule'>('leave');
   const [checkInStatus, setCheckInStatus] = useState<'not_checked' | 'checking' | 'success' | 'blocked'>('not_checked');
+
+  // Leave requests (API)
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [isLoadingLeave, setIsLoadingLeave] = useState(false);
+  const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
+  const [isCreateLeaveModalOpen, setIsCreateLeaveModalOpen] = useState(false);
+  const [leaveSelectedUserId, setLeaveSelectedUserId] = useState<string | 'all'>('all');
+  const [leaveForm, setLeaveForm] = useState<{
+    startDate: string;
+    endDate: string;
+    type: LeaveType;
+    reason: string;
+  }>({
+    startDate: '',
+    endDate: '',
+    type: 'ANNUAL',
+    reason: '',
+  });
   
   // State cho modal tạo lịch làm việc
   const [isCreateScheduleModalOpen, setIsCreateScheduleModalOpen] = useState(false);
@@ -350,12 +376,68 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
 
 
 
-  // Mock leave requests
-  const leaveRequests = [
-    { id: '1', type: 'Nghỉ phép năm', from: '2024-02-15', to: '2024-02-16', days: 2, status: 'approved', reason: 'Việc cá nhân' },
-    { id: '2', type: 'Nghỉ ốm', from: '2024-01-20', to: '2024-01-20', days: 1, status: 'approved', reason: 'Khám bác sĩ' },
-    { id: '3', type: 'Nghỉ phép năm', from: '2024-01-08', to: '2024-01-12', days: 5, status: 'approved', reason: 'Du lịch' },
-  ];
+  // Fetch leave requests từ API
+  useEffect(() => {
+    if (activeTab !== 'leave') return;
+
+    const fetchLeave = async () => {
+      setIsLoadingLeave(true);
+      try {
+        const data = isAdmin
+          ? await leaveRequestService.getAllLeaveRequests()
+          : await leaveRequestService.getMyLeaveRequests();
+        setLeaveRequests(data || []);
+      } catch (error: any) {
+        console.error('Error fetching leave requests:', error);
+        toast.error('Không thể tải đơn xin nghỉ', {
+          description: error.message || 'Vui lòng thử lại sau',
+        });
+        setLeaveRequests([]);
+      } finally {
+        setIsLoadingLeave(false);
+      }
+    };
+
+    fetchLeave();
+  }, [activeTab, isAdmin]);
+
+  const handleSubmitLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leaveForm.startDate || !leaveForm.endDate) {
+      toast.error('Vui lòng chọn ngày bắt đầu và ngày kết thúc');
+      return;
+    }
+    if (!leaveForm.reason.trim()) {
+      toast.error('Vui lòng nhập lý do nghỉ');
+      return;
+    }
+
+    setIsSubmittingLeave(true);
+    try {
+      await leaveRequestService.createLeaveRequest({
+        startDate: leaveForm.startDate,
+        endDate: leaveForm.endDate,
+        type: leaveForm.type,
+        reason: leaveForm.reason.trim(),
+      });
+      toast.success('Gửi đơn xin nghỉ thành công');
+      setIsCreateLeaveModalOpen(false);
+      setLeaveForm({ startDate: '', endDate: '', type: 'ANNUAL', reason: '' });
+
+      // Refresh list
+      const data = isAdmin
+        ? await leaveRequestService.getAllLeaveRequests()
+        : await leaveRequestService.getMyLeaveRequests();
+      setLeaveRequests(data || []);
+    } catch (error: any) {
+      console.error('Error creating leave request:', error);
+      toast.error('Không thể gửi đơn xin nghỉ', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    } finally {
+      setIsSubmittingLeave(false);
+    }
+  };
 
   const leaveBalance = {
     annual: { total: 12, used: 7, remaining: 5 },
@@ -368,8 +450,14 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     date: string;
     shift: string;
     status: 'scheduled' | 'today';
+    dayOfWeek: number;
   }>>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+
+  // Lưu schedule hiện tại (raw) để phục vụ chỉnh sửa/xóa từng ngày
+  const [currentWeeklySchedule, setCurrentWeeklySchedule] = useState<WeeklySchedule | null>(null);
+  const [isEditDayModalOpen, setIsEditDayModalOpen] = useState(false);
+  const [editingDay, setEditingDay] = useState<WeeklyScheduleDay | null>(null);
 
   // State để lưu userId đang xem lịch (cho admin có thể xem lịch của user khác)
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
@@ -419,18 +507,22 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
         }
         
         if (currentSchedule) {
+          setCurrentWeeklySchedule(currentSchedule as WeeklySchedule);
           // Format schedule để hiển thị
           const formattedSchedule = formatScheduleForDisplay(currentSchedule);
           setWeekSchedule(formattedSchedule);
         } else {
+          setCurrentWeeklySchedule(null);
           setWeekSchedule([]);
         }
       } else {
+        setCurrentWeeklySchedule(null);
         setWeekSchedule([]);
       }
     } catch (error: any) {
       console.error('Error fetching weekly schedule:', error);
       // Nếu lỗi, hiển thị empty state
+      setCurrentWeeklySchedule(null);
       setWeekSchedule([]);
     } finally {
       setIsLoadingSchedule(false);
@@ -474,6 +566,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
           date: dateStr,
           shift: shiftStr,
           status: isToday ? 'today' as const : 'scheduled' as const,
+          dayOfWeek: day.dayOfWeek,
         };
       })
       .sort((a, b) => {
@@ -587,39 +680,235 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Đơn xin nghỉ</h3>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button
+                type="button"
+                onClick={() => setIsCreateLeaveModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 + Tạo đơn mới
               </button>
             </div>
 
-            <div className="space-y-3">
-              {leaveRequests.map((request) => (
-                <div key={request.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-gray-900">{request.type}</span>
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                          {request.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
-                        </span>
+            {isAdmin && (
+              <div className="mb-3 flex items-center gap-2">
+                <Label className="text-xs text-gray-500">Lọc theo nhân viên:</Label>
+                <Select
+                  value={leaveSelectedUserId}
+                  onValueChange={(val) => setLeaveSelectedUserId(val as string | 'all')}
+                >
+                  <SelectTrigger className="h-9 w-72 text-sm">
+                    <SelectValue placeholder="Chọn nhân viên" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả nhân viên</SelectItem>
+                    {Array.from(
+                      new Map(
+                        leaveRequests
+                          .filter((req) => (req as any).user?.id)
+                          .map((req) => [(req as any).user.id, (req as any).user]),
+                      ).values(),
+                    ).map((u: any) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {(u.fullName || u.full_name || u.email || 'N/A') as string}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {isLoadingLeave ? (
+              <div className="flex items-center justify-center py-6 text-gray-500 text-sm">
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Đang tải đơn xin nghỉ...
+              </div>
+            ) : (() => {
+              const filtered =
+                isAdmin && leaveSelectedUserId !== 'all'
+                  ? leaveRequests.filter((req) => (req as any).user?.id === leaveSelectedUserId)
+                  : leaveRequests;
+
+              return filtered.length > 0 ? (
+                <div className="space-y-3">
+                  {filtered.map((request) => (
+                    <div key={request.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-medium text-gray-900">
+                              {request.type === 'ANNUAL'
+                                ? 'Nghỉ phép năm'
+                                : request.type === 'SICK'
+                                ? 'Nghỉ ốm'
+                                : request.type === 'UNPAID'
+                                ? 'Nghỉ không lương'
+                                : 'Khác'}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 text-xs rounded-full ${
+                                request.status === 'APPROVED'
+                                  ? 'bg-green-100 text-green-700'
+                                  : request.status === 'REJECTED'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }`}
+                            >
+                              {request.status === 'APPROVED'
+                                ? 'Đã duyệt'
+                                : request.status === 'REJECTED'
+                                ? 'Từ chối'
+                                : 'Chờ duyệt'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">
+                            {request.startDate} - {request.endDate}
+                          </p>
+                          <p className="text-sm text-gray-500">Lý do: {request.reason}</p>
+                          {request.status === 'REJECTED' && request.rejectReason && (
+                            <p className="text-xs text-red-500 mt-1">Lý do từ chối: {request.rejectReason}</p>
+                          )}
+                        </div>
+
+                        {isAdmin && (
+                          <div className="ml-4 flex flex-col items-end gap-2">
+                            {request.status !== 'APPROVED' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    await leaveRequestService.updateLeaveStatus(request.id, 'APPROVED');
+                                    toast.success('Đã duyệt đơn nghỉ');
+                                    const data = await leaveRequestService.getAllLeaveRequests();
+                                    setLeaveRequests(data || []);
+                                  } catch (error: any) {
+                                    console.error('Error approving leave request:', error);
+                                    toast.error('Không thể duyệt đơn', {
+                                      description: error.message || 'Vui lòng thử lại sau',
+                                    });
+                                  }
+                                }}
+                              >
+                                Duyệt
+                              </Button>
+                            )}
+                            {request.status === 'APPROVED' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-600"
+                                onClick={async () => {
+                                  try {
+                                    await leaveRequestService.updateLeaveStatus(request.id, 'PENDING');
+                                    toast.success('Chuyển về trạng thái chờ duyệt');
+                                    const data = await leaveRequestService.getAllLeaveRequests();
+                                    setLeaveRequests(data || []);
+                                  } catch (error: any) {
+                                    console.error('Error resetting leave request status:', error);
+                                    toast.error('Không thể cập nhật trạng thái', {
+                                      description: error.message || 'Vui lòng thử lại sau',
+                                    });
+                                  }
+                                }}
+                              >
+                                Chuyển về chờ duyệt
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        {request.from} - {request.to} ({request.days} ngày)
-                      </p>
-                      <p className="text-sm text-gray-500">Lý do: {request.reason}</p>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-sm text-gray-500">
+                  Chưa có đơn xin nghỉ nào.
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
+      {/* Modal tạo đơn xin nghỉ */}
+      <Dialog open={isCreateLeaveModalOpen} onOpenChange={setIsCreateLeaveModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tạo đơn xin nghỉ</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitLeave} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="leave-start">Ngày bắt đầu</Label>
+                <Input
+                  id="leave-start"
+                  type="date"
+                  value={leaveForm.startDate}
+                  onChange={(e) => setLeaveForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="leave-end">Ngày kết thúc</Label>
+                <Input
+                  id="leave-end"
+                  type="date"
+                  value={leaveForm.endDate}
+                  onChange={(e) => setLeaveForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="leave-type">Loại nghỉ</Label>
+              <Select
+                value={leaveForm.type}
+                onValueChange={(val) => setLeaveForm((prev) => ({ ...prev, type: val as LeaveType }))}
+              >
+                <SelectTrigger id="leave-type">
+                  <SelectValue placeholder="Chọn loại nghỉ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ANNUAL">Nghỉ phép năm</SelectItem>
+                  <SelectItem value="SICK">Nghỉ ốm</SelectItem>
+                  <SelectItem value="UNPAID">Nghỉ không lương</SelectItem>
+                  <SelectItem value="OTHER">Khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="leave-reason">Lý do</Label>
+              <Input
+                id="leave-reason"
+                placeholder="Nhập lý do nghỉ..."
+                value={leaveForm.reason}
+                onChange={(e) => setLeaveForm((prev) => ({ ...prev, reason: e.target.value }))}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateLeaveModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button type="submit" disabled={isSubmittingLeave}>
+                {isSubmittingLeave ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang gửi...
+                  </>
+                ) : (
+                  'Gửi đơn'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {activeTab === 'schedule' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Lịch làm việc tuần này</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Lịch làm việc tuần này</h3>
             {isLoadingRole ? (
               <div className="text-xs text-gray-500 flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -639,34 +928,100 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
               <span className="ml-2 text-gray-500">Đang tải lịch làm việc...</span>
             </div>
           ) : weekSchedule.length > 0 ? (
-            <div className="space-y-2">
-              {weekSchedule.map((schedule, index) => (
+          <div className="space-y-2">
+            {weekSchedule.map((schedule, index) => (
                 <div
                   key={index}
-                  className={`border-2 rounded-lg p-4 ${
-                    schedule.status === 'today'
-                      ? 'border-orange-300 bg-orange-50'
-                      : 'border-gray-200 bg-white'
-                  }`}
+                  className="border-2 rounded-lg p-4 transition-colors border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 text-center ${
-                        schedule.status === 'today' ? 'text-orange-600 font-bold' : 'text-gray-600'
-                      }`}>
-                        <p className="text-xs">{schedule.day}</p>
-                        <p className="text-lg font-semibold">{schedule.date}</p>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{schedule.shift}</p>
-                        {schedule.status === 'today' && (
-                          <p className="text-xs text-orange-600 font-medium">Hôm nay</p>
-                        )}
-                      </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 text-center ${
+                      schedule.status === 'today' ? 'text-orange-600 font-bold' : 'text-gray-600'
+                    }`}>
+                      <p className="text-xs">{schedule.day}</p>
+                      <p className="text-lg font-semibold">{schedule.date}</p>
                     </div>
-                    {schedule.status === 'today' && (
-                      <Clock className="w-6 h-6 text-orange-600" />
-                    )}
+                    <div>
+                      <p className="font-medium text-gray-900">{schedule.shift}</p>
+                      {schedule.status === 'today' && (
+                        <p className="text-xs text-orange-600 font-medium">Hôm nay</p>
+                      )}
+                    </div>
+                  </div>
+                    <div className="flex items-center gap-2">
+                      {isAdmin && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="text-gray-500 hover:text-orange-600"
+                              aria-label="Cài đặt ngày làm việc"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (!currentWeeklySchedule) {
+                                  toast.error('Không tìm thấy lịch làm việc để chỉnh sửa');
+                                  return;
+                                }
+                                const day = currentWeeklySchedule.days.find((d) => d.dayOfWeek === schedule.dayOfWeek);
+                                if (!day) {
+                                  toast.error('Không tìm thấy ca làm việc cho ngày này');
+                                  return;
+                                }
+                                setEditingDay({
+                                  dayOfWeek: day.dayOfWeek,
+                                  startTime: day.startTime,
+                                  endTime: day.endTime,
+                                  isWorking: day.isWorking,
+                                });
+                                setIsEditDayModalOpen(true);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Chỉnh sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={async () => {
+                                if (!currentWeeklySchedule) {
+                                  toast.error('Không tìm thấy lịch làm việc để xóa');
+                                  return;
+                                }
+                                const ok = confirm('Bạn có chắc chắn muốn xóa ca làm việc của ngày này?');
+                                if (!ok) return;
+                                try {
+                                  await weeklyScheduleService.updateWeeklyScheduleDays(currentWeeklySchedule.id, [
+                                    {
+                                      dayOfWeek: schedule.dayOfWeek,
+                                      isWorking: false,
+                                    },
+                                  ]);
+                                  toast.success('Đã xóa ca làm việc cho ngày này');
+                                  await fetchWeeklyScheduleForUser(viewingUserId || user.id);
+                                } catch (error: any) {
+                                  console.error('Error deleting single day schedule:', error);
+                                  toast.error('Không thể xóa ca làm việc', {
+                                    description: error.message || 'Vui lòng thử lại sau',
+                                  });
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Xóa
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {/* Removed clock icon per request */}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -783,9 +1138,9 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                         </div>
                       </>
                     )}
-                  </div>
-                ))}
               </div>
+            ))}
+          </div>
             </div>
 
             <DialogFooter>
@@ -809,6 +1164,92 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal chỉnh sửa 1 ngày làm việc (admin) */}
+      <Dialog open={isEditDayModalOpen} onOpenChange={setIsEditDayModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa ca làm việc</DialogTitle>
+          </DialogHeader>
+          {editingDay && currentWeeklySchedule && (
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  if (editingDay.isWorking && (!editingDay.startTime || !editingDay.endTime)) {
+                    toast.error('Vui lòng nhập đầy đủ giờ vào và giờ ra');
+                    return;
+                  }
+
+                  await weeklyScheduleService.updateWeeklyScheduleDays(currentWeeklySchedule.id, [
+                    {
+                      dayOfWeek: editingDay.dayOfWeek,
+                      startTime: editingDay.startTime,
+                      endTime: editingDay.endTime,
+                      isWorking: editingDay.isWorking,
+                    },
+                  ]);
+                  toast.success('Đã cập nhật ca làm việc');
+                  setIsEditDayModalOpen(false);
+                  await fetchWeeklyScheduleForUser(viewingUserId || user.id);
+                } catch (error: any) {
+                  console.error('Error updating single day schedule:', error);
+                  toast.error('Không thể cập nhật ca làm việc', {
+                    description: error.message || 'Vui lòng thử lại sau',
+                  });
+                }
+              }}
+            >
+              <div className="space-y-2">
+                <Label>Ngày trong tuần</Label>
+                <p className="text-sm text-gray-700 font-medium">
+                  {dayNames[editingDay.dayOfWeek === 7 ? 0 : editingDay.dayOfWeek]}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={editingDay.isWorking}
+                  onCheckedChange={(checked) =>
+                    setEditingDay((prev) => (prev ? { ...prev, isWorking: Boolean(checked) } : prev))
+                  }
+                />
+                <Label className="text-sm">Làm việc</Label>
+              </div>
+              {editingDay.isWorking && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label>Giờ vào</Label>
+                    <Input
+                      type="time"
+                      value={editingDay.startTime || ''}
+                      onChange={(e) =>
+                        setEditingDay((prev) => (prev ? { ...prev, startTime: e.target.value } : prev))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Giờ ra</Label>
+                    <Input
+                      type="time"
+                      value={editingDay.endTime || ''}
+                      onChange={(e) =>
+                        setEditingDay((prev) => (prev ? { ...prev, endTime: e.target.value } : prev))
+                      }
+                    />
+                  </div>
+        </div>
+      )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditDayModalOpen(false)}>
+                  Hủy
+                </Button>
+                <Button type="submit">Lưu thay đổi</Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

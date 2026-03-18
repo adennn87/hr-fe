@@ -48,13 +48,13 @@ export const roleService = {
 
     const data = await response.json();
 
-    // Chuẩn hoá dữ liệu, flatten department.name thành string để dùng cho màn nhân sự
+    // Chuẩn hoá dữ liệu, flatten department.name thành string và map full_name -> fullName
     return (data as any[]).map((role) => ({
       id: role.id,
       name: role.name,
       users: (role.users || []).map((user: any) => ({
         id: user.id,
-        fullName: user.fullName || '',
+        fullName: user.fullName || user.full_name || '',
         email: user.email,
         department:
           user.department && typeof user.department === 'object'

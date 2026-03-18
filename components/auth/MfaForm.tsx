@@ -47,10 +47,10 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
       const response = await authService.verifyMfa(otp, pendingEmail, pendingPassword);
       
       if (response.accessToken) {
-        // Map response từ API sang UserProfile format
+        // Map response từ API sang UserProfile format, map full_name -> fullName nếu backend trả về snake_case
         const userProfile: UserProfile = {
           id: response.user.id,
-          name: response.user.fullName,
+          name: response.user.fullName || response.user.full_name || '',
           email: response.user.email,
           role: response.user.roleId,
           department: '',

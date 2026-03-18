@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Users, DollarSign, Clock, UserPlus, Settings, Activity } from 'lucide-react';
 import { IAMCore } from './modules/IAMCore';
@@ -97,33 +97,36 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     });
   };
 
-  const accessibleModules = modules.filter(module => 
+  const accessibleModules = modules.filter(module =>
     hasAccess(module.roles, user.role)
   );
 
-  // Check admin: decode JWT token để lấy role name thực tế
-  const checkIsAdmin = (): boolean => {
+  // isAdmin được tính trên client sau khi hydrate để tránh hydration mismatch
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
     try {
       // Ưu tiên 1: Decode JWT token để lấy role name
-      const token = typeof window !== 'undefined' 
-        ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken'))
-        : null;
-      
+      const token =
+        typeof window !== 'undefined'
+          ? sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')
+          : null;
+
       if (token) {
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           if (payload.role) {
-            // Role trong token có thể là object với name hoặc string
             let roleName = '';
             if (typeof payload.role === 'object' && payload.role !== null && payload.role.name) {
               roleName = payload.role.name;
             } else if (typeof payload.role === 'string') {
               roleName = payload.role;
             }
-            
+
             if (roleName) {
               const normalized = normalizeRole(roleName).toLowerCase();
-              return normalized.includes('admin');
+              setIsAdmin(normalized.includes('admin'));
+              return;
             }
           }
         } catch (e) {
@@ -136,20 +139,19 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
         const normalized = normalizeRole(user.role).toLowerCase();
         // Nếu là UUID (36 ký tự với dấu gạch ngang), không phải admin
         if (normalized.length === 36 && normalized.includes('-')) {
-          return false; // roleId UUID, không phải role name
+          setIsAdmin(false);
+          return;
         }
-        // Nếu chứa "admin" thì là admin
-        return normalized.includes('admin');
+        setIsAdmin(normalized.includes('admin'));
+        return;
       }
 
-      return false;
+      setIsAdmin(false);
     } catch (error) {
       console.error('Error checking admin status:', error);
-      return false;
+      setIsAdmin(false);
     }
-  };
-
-  const isAdmin = checkIsAdmin();
+  }, [user.role]);
 
   // Nếu không có module nào match, hiển thị tất cả (fallback)
   // Hoặc có thể hiển thị message cảnh báo
