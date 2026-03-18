@@ -19,6 +19,11 @@ export interface RoleWithUsers {
   users: RoleUser[];
 }
 
+export interface RoleOption {
+  id: string;
+  name: string;
+}
+
 export const roleService = {
   /**
    * Lấy danh sách role và user thuộc từng role
@@ -62,6 +67,15 @@ export const roleService = {
             : user.department ?? null,
       })),
     }));
+  },
+
+  /**
+   * Lấy danh sách role (id + name) để dùng cho dropdown chọn role khi tạo tài khoản.
+   * Tận dụng endpoint /roles/listUserRole (đã có sẵn), chỉ lấy id + name.
+   */
+  async getRoleOptions(): Promise<RoleOption[]> {
+    const roles = await this.getRolesWithUsers();
+    return (roles || []).map((r) => ({ id: r.id, name: r.name }));
   },
 };
 

@@ -13,6 +13,7 @@ export interface RegisterPayload {
   department?: string;
   position?: string;
   citizen_Id?: string;
+  roleId?: string;
   mfaEnabled?: boolean;
   taxCode?: string; // Thêm trường taxCode tùy chọn
 }
@@ -94,6 +95,7 @@ export const authService = {
       position: data.position,
       citizen_Id: data.citizen_Id,
       taxCode: data.taxCode || undefined, // Gửi taxCode nếu có
+      roleId: (data as any).roleId || undefined,
     };
 
     return fetchClient<{ message: string; success: boolean }>('/auth/register', {

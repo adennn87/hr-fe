@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authService } from "@/services/auth.service";
 import { departmentService, Department as APIDepartment } from "@/services/department.service";
+import { roleService, type RoleOption } from "@/services/role.service";
 
 // --- 1. SCHEMA VALIDATION ---
 const registerSchema = z
@@ -73,6 +74,7 @@ const registerSchema = z
       .regex(/[!@#$%^&*(),.?":{}|<>]/, "Cần 1 ký tự đặc biệt"),
 
     confirmPassword: z.string(),
+    roleId: z.string().min(1, "Vui lòng chọn role"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Mật khẩu không khớp",
@@ -91,6 +93,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [departments, setDepartments] = useState<APIDepartment[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
 
   const {
     register,
@@ -105,6 +109,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
       department: "",
       position: Position.Employee,
       taxCode: "",
+      roleId: "",
     },
   });
 
@@ -122,6 +127,22 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
       }
     };
     fetchDepartments();
+  }, []);
+
+  // Fetch roles for dropdown (admin only flow)
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await roleService.getRoleOptions();
+        setRoles(data);
+      } catch (error) {
+        console.error("Failed to fetch roles", error);
+        toast.error("Không thể tải danh sách role");
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+    fetchRoles();
   }, []);
 
   const passwordValue = watch("password", "");
@@ -149,7 +170,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
     setIsLoading(true);
     try {
       // Gọi service đăng ký
-      const response = await authService.register(data);
+      // Backend dùng khóa ngoại department => gửi thẳng departmentId
+      const response = await authService.register(data as any);
 
       // Hiển thị message từ API response
       toast.success(response.message || "Đăng ký tài khoản thành công", {
@@ -285,6 +307,31 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label>
+                Role <span className="text-red-500">*</span>
+              </Label>
+              <select
+                {...register("roleId")}
+                disabled={rolesLoading}
+                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${
+                  errors.roleId ? "border-red-500" : "border-slate-200"
+                }`}
+              >
+                <option value="">
+                  {rolesLoading ? "Đang tải role..." : "Chọn role"}
+                </option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              {errors.roleId && (
+                <p className="text-red-500 text-xs mt-1">{errors.roleId.message}</p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>
                 Department <span className="text-red-500">*</span>

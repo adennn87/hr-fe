@@ -191,7 +191,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
                 <div className="mt-3">
                   <button
                     type="button"
-                    onClick={() => router.push('/register')}
+                    onClick={() => router.push('/dashboard/register')}
                     className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-blue-700 transition-colors"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />

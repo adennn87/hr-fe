@@ -169,10 +169,10 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     if (payroll) {
       const adjustments = payroll.adjustments || [];
       const add = adjustments
-        .filter((a) => a.category === 'ADD')
+        .filter((a) => (a.category || a.type) === 'ADD')
         .reduce((sum, a) => sum + Number(a.amount || 0), 0);
       const sub = adjustments
-        .filter((a) => a.category === 'SUB')
+        .filter((a) => (a.category || a.type) === 'SUB')
         .reduce((sum, a) => sum + Number(a.amount || 0), 0);
 
       const base = Number(payroll.baseSalary || 0);
@@ -378,78 +378,6 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
               </Select>
             </div>
           </div>
-
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-gray-500">Tìm nhanh (Tên - username - Thực nhận):</Label>
-              <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn("h-9 w-[360px] justify-start text-sm font-normal", !selectedEmployeeId ? "text-muted-foreground" : "")}
-                  >
-                    {selectedEmployeeId === 'me'
-                      ? 'Tài khoản của tôi'
-                      : (selectedEmployee?.fullName || selectedEmployee?.email || 'Chọn nhân viên')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[360px] p-0" align="start">
-                  <Command>
-                    <CommandInput
-                      placeholder={isLoadingMonthRows ? "Đang tải..." : "Nhập tên hoặc email..."}
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
-                    <CommandList>
-                      <CommandEmpty>Không tìm thấy nhân viên.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          value="me"
-                          onSelect={() => {
-                            setSelectedEmployeeId('me');
-                            setSearchOpen(false);
-                            setSearchQuery('');
-                          }}
-                        >
-                          Tài khoản của tôi
-                        </CommandItem>
-                        {(monthRows || [])
-                          .filter((row) => {
-                            const q = searchQuery.trim().toLowerCase();
-                            if (!q) return true;
-                            const name = (row.user?.name || '').toLowerCase();
-                            const email = (row.user?.email || '').toLowerCase();
-                            return name.includes(q) || email.includes(q);
-                          })
-                          .slice(0, 30)
-                          .map((row) => (
-                            <CommandItem
-                              key={row.user.id}
-                              value={row.user.id}
-                              onSelect={() => {
-                                setSelectedEmployeeId(row.user.id);
-                                setSearchOpen(false);
-                                setSearchQuery('');
-                              }}
-                              className="flex items-center justify-between"
-                            >
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">{row.user.name || row.user.email}</span>
-                                <span className="text-xs text-gray-500">{row.user.email}</span>
-                              </div>
-                              <span className="text-sm font-semibold text-green-700">
-                                {formatCurrency(row.finalSalary)}
-                              </span>
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
 
           {isAdmin && selectedEmployeeId !== 'me' && selectedEmployee && (
             <div className="text-sm text-gray-600">
