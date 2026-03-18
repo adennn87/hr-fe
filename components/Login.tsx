@@ -119,6 +119,7 @@ export function Login({ onLogin, initialStep = 'credentials' }: LoginProps) {
 
             {step === 'reset' && (
               <ResetPasswordForm
+                email={identifier}
                 onBack={() => setStep('forgot')}
                 onSuccess={() => setStep('credentials')}
               />

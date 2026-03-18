@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { ArrowLeft, KeyRound, Eye, EyeOff, Check, Loader2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '@/services/auth.service';
 
 // --- 1. SCHEMA VALIDATION (Đồng bộ với Register) ---
 const resetSchema = z.object({
@@ -23,11 +24,12 @@ const resetSchema = z.object({
 type ResetFormValues = z.infer<typeof resetSchema>;
 
 interface ResetPasswordFormProps {
+  email: string;
   onBack: () => void;
   onSuccess: () => void;
 }
 
-export function ResetPasswordForm({ onBack, onSuccess }: ResetPasswordFormProps) {
+export function ResetPasswordForm({ email, onBack, onSuccess }: ResetPasswordFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -53,16 +55,33 @@ export function ResetPasswordForm({ onBack, onSuccess }: ResetPasswordFormProps)
   // --- 3. SUBMIT ---
   const onSubmit = async (data: ResetFormValues) => {
     setIsLoading(true);
-    // Giả lập API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    console.log("Reset Data:", data);
-    
-    setIsLoading(false);
-    toast.success("Đổi mật khẩu thành công!", {
-      description: "Vui lòng đăng nhập bằng mật khẩu mới."
-    });
-    onSuccess();
+    try {
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      if (!normalizedEmail) {
+        toast.error('Thiếu email để đặt lại mật khẩu', {
+          description: 'Vui lòng quay lại bước trước và nhập email.',
+        });
+        return;
+      }
+
+      await authService.resetPassword({
+        email: normalizedEmail,
+        otp: data.otp,
+        newPassword: data.password,
+      });
+
+      toast.success("Đổi mật khẩu thành công!", {
+        description: "Vui lòng đăng nhập bằng mật khẩu mới."
+      });
+      onSuccess();
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      toast.error('Đổi mật khẩu thất bại', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

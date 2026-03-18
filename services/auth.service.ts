@@ -32,7 +32,7 @@ export interface LoginResponse {
 // Định nghĩa kiểu dữ liệu cho payload Reset Password
 export interface ResetPasswordPayload {
   email: string;
-  code: string;       // Mã OTP
+  otp: string;        // Mã OTP
   newPassword: string;
 }
 

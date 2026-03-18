@@ -1,8 +1,17 @@
 "use client";
 
-import React, { useState } from 'react';
-import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings } from 'lucide-react';
 import { User } from '@/lib/auth-types';
+import { employeeService, type Employee } from '@/services/employee.service';
+import { payrollService, type PayrollDetail, type PayrollMonthRow } from '@/services/payroll.service';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/components/ui/utils';
 
 interface CompensationBenefitsProps {
   user: User;
@@ -12,18 +21,195 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [activeTab, setActiveTab] = useState<'salary' | 'payslip' | 'benefits'>('salary');
   const [requireStepUp, setRequireStepUp] = useState(false);
   const [stepUpVerified, setStepUpVerified] = useState(false);
+  const [userRoleName, setUserRoleName] = useState<string | null>(null);
+  const [isLoadingRole, setIsLoadingRole] = useState(false);
 
-  // Mock salary data
-  const salaryData = {
-    baseSalary: 25000000,
-    allowances: 5000000,
-    bonuses: 3000000,
-    totalGross: 33000000,
-    insurance: 3300000,
-    tax: 2970000,
-    totalDeductions: 6270000,
-    netSalary: 26730000,
-  };
+  // Admin UI: chọn nhân viên theo ID để xem lương
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('me');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1));
+  const [payroll, setPayroll] = useState<PayrollDetail | null>(null);
+  const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
+  const [monthRows, setMonthRows] = useState<PayrollMonthRow[]>([]);
+  const [isLoadingMonthRows, setIsLoadingMonthRows] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const selectedEmployee = useMemo(() => {
+    if (selectedEmployeeId === 'me') return null;
+    return employees.find((e) => e.id === selectedEmployeeId) || null;
+  }, [employees, selectedEmployeeId]);
+
+  // Lấy role name từ JWT token hoặc API
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      setIsLoadingRole(true);
+      try {
+        const token =
+          typeof window !== 'undefined'
+            ? sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')
+            : null;
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.role) {
+              if (typeof payload.role === 'object' && payload.role !== null && payload.role.name) {
+                setUserRoleName(payload.role.name);
+                return;
+              }
+              if (typeof payload.role === 'string') {
+                setUserRoleName(payload.role);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('Error decoding JWT token:', e);
+          }
+        }
+
+        // Fallback: dùng user.role trực tiếp (có thể là UUID hoặc role name)
+        if (user.role) {
+          setUserRoleName(user.role);
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      } finally {
+        setIsLoadingRole(false);
+      }
+    };
+    fetchUserRole();
+  }, [user.role]);
+
+  // Check nếu user là admin
+  const isAdmin = useMemo(() => {
+    if (!userRoleName) return false;
+    return userRoleName.toLowerCase().includes('admin');
+  }, [userRoleName]);
+
+  // Load employees cho dropdown khi admin vào tab salary
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (activeTab !== 'salary') return;
+
+    const loadEmployees = async () => {
+      setIsLoadingEmployees(true);
+      try {
+        const data = await employeeService.getAllEmployees();
+        setEmployees(data || []);
+      } catch (error: any) {
+        console.error('Error loading employees for payroll filter:', error);
+        toast.error('Không thể tải danh sách nhân viên', {
+          description: error.message || 'Vui lòng thử lại sau',
+        });
+        setEmployees([]);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    loadEmployees();
+  }, [isAdmin, activeTab]);
+
+  // Load payroll theo userId + month
+  useEffect(() => {
+    if (activeTab !== 'salary') return;
+
+    const targetUserId = selectedEmployeeId === 'me' ? user.id : selectedEmployeeId;
+    if (!targetUserId) return;
+
+    const loadPayroll = async () => {
+      setIsLoadingPayroll(true);
+      try {
+        const data = await payrollService.getPayrollByUserId(targetUserId, selectedMonth);
+        setPayroll(data);
+      } catch (error: any) {
+        console.error('Error fetching payroll:', error);
+        toast.error('Không thể tải dữ liệu lương', {
+          description: error.message || 'Vui lòng thử lại sau',
+        });
+        setPayroll(null);
+      } finally {
+        setIsLoadingPayroll(false);
+      }
+    };
+
+    // Non-admin: chỉ cho xem lương của chính mình
+    if (!isAdmin && selectedEmployeeId !== 'me') {
+      setSelectedEmployeeId('me');
+      return;
+    }
+
+    loadPayroll();
+  }, [activeTab, selectedEmployeeId, selectedMonth, user.id, isAdmin]);
+
+  // Admin: load bảng lương tháng để hiển thị dropdown "Tên - username - thực nhận"
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (activeTab !== 'salary') return;
+
+    const loadMonthRows = async () => {
+      setIsLoadingMonthRows(true);
+      try {
+        const rows = await payrollService.getPayrollByMonth(selectedMonth);
+        setMonthRows(rows || []);
+      } catch (error: any) {
+        console.error('Error fetching payroll month rows:', error);
+        // Không toast liên tục, chỉ log; UI sẽ fallback sang dropdown select nhân viên nếu cần
+        setMonthRows([]);
+      } finally {
+        setIsLoadingMonthRows(false);
+      }
+    };
+
+    loadMonthRows();
+  }, [isAdmin, activeTab, selectedMonth]);
+
+  const salaryData = useMemo(() => {
+    // Nếu đã có payroll từ API thì dùng, không thì fallback mock
+    if (payroll) {
+      const adjustments = payroll.adjustments || [];
+      const add = adjustments
+        .filter((a) => a.category === 'ADD')
+        .reduce((sum, a) => sum + Number(a.amount || 0), 0);
+      const sub = adjustments
+        .filter((a) => a.category === 'SUB')
+        .reduce((sum, a) => sum + Number(a.amount || 0), 0);
+
+      const base = Number(payroll.baseSalary || 0);
+      const allowance = Number(payroll.allowance || 0);
+      const deduction = Number(payroll.deduction || 0) + sub;
+      const gross = base + allowance + add;
+      const net = Number(payroll.finalSalary || 0);
+
+      return {
+        baseSalary: base,
+        allowances: allowance,
+        bonuses: add,
+        totalGross: gross,
+        insurance: 0,
+        tax: 0,
+        totalDeductions: deduction,
+        netSalary: net,
+        workingDays: payroll.workingDays,
+        leaveDays: payroll.leaveDays,
+        salaryPerDay: payroll.salaryPerDay,
+      };
+    }
+
+    return {
+      baseSalary: 25000000,
+      allowances: 5000000,
+      bonuses: 3000000,
+      totalGross: 33000000,
+      insurance: 3300000,
+      tax: 2970000,
+      totalDeductions: 6270000,
+      netSalary: 26730000,
+      workingDays: null as number | null,
+      leaveDays: null as number | null,
+      salaryPerDay: null as number | null,
+    };
+  }, [payroll]);
 
   // Mock payslips
   const payslips = [
@@ -96,6 +282,17 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             Lương & Phúc lợi - Khu vực rủi ro cao nhất (High Impact)
           </p>
         </div>
+        {isLoadingRole ? (
+          <div className="text-xs text-gray-500 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-gray-300" />
+            Đang kiểm tra quyền...
+          </div>
+        ) : isAdmin ? (
+          <Button type="button" variant="outline" className="gap-2">
+            <Settings className="w-4 h-4" />
+            Settings
+          </Button>
+        ) : null}
       </div>
 
       
@@ -130,7 +327,152 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       {/* Tab Content */}
       {activeTab === 'salary' && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Chi tiết lương tháng 02/2024</h3>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Chi tiết lương tháng {payroll?.month || selectedMonth}/{new Date().getFullYear()}
+            </h3>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-gray-500">Tìm lương theo nhân viên (ID):</Label>
+                {isLoadingEmployees ? (
+                  <div className="text-xs text-gray-500">Đang tải...</div>
+                ) : (
+                  <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                    <SelectTrigger className="h-9 w-[360px] text-sm">
+                      <SelectValue placeholder="Chọn nhân viên" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="me">Tài khoản của tôi</SelectItem>
+                      {employees.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {(emp.fullName || (emp as any).full_name || 'N/A') as string} ({emp.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-gray-600">
+              {isLoadingPayroll ? 'Đang tải dữ liệu lương...' : payroll ? `Tháng ${payroll.month}` : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-500">Tháng:</Label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="h-9 w-28 text-sm">
+                  <SelectValue placeholder="Tháng" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const m = String(i + 1);
+                    return (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-500">Tìm nhanh (Tên - username - Thực nhận):</Label>
+              <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn("h-9 w-[360px] justify-start text-sm font-normal", !selectedEmployeeId ? "text-muted-foreground" : "")}
+                  >
+                    {selectedEmployeeId === 'me'
+                      ? 'Tài khoản của tôi'
+                      : (selectedEmployee?.fullName || selectedEmployee?.email || 'Chọn nhân viên')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[360px] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder={isLoadingMonthRows ? "Đang tải..." : "Nhập tên hoặc email..."}
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy nhân viên.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="me"
+                          onSelect={() => {
+                            setSelectedEmployeeId('me');
+                            setSearchOpen(false);
+                            setSearchQuery('');
+                          }}
+                        >
+                          Tài khoản của tôi
+                        </CommandItem>
+                        {(monthRows || [])
+                          .filter((row) => {
+                            const q = searchQuery.trim().toLowerCase();
+                            if (!q) return true;
+                            const name = (row.user?.name || '').toLowerCase();
+                            const email = (row.user?.email || '').toLowerCase();
+                            return name.includes(q) || email.includes(q);
+                          })
+                          .slice(0, 30)
+                          .map((row) => (
+                            <CommandItem
+                              key={row.user.id}
+                              value={row.user.id}
+                              onSelect={() => {
+                                setSelectedEmployeeId(row.user.id);
+                                setSearchOpen(false);
+                                setSearchQuery('');
+                              }}
+                              className="flex items-center justify-between"
+                            >
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{row.user.name || row.user.email}</span>
+                                <span className="text-xs text-gray-500">{row.user.email}</span>
+                              </div>
+                              <span className="text-sm font-semibold text-green-700">
+                                {formatCurrency(row.finalSalary)}
+                              </span>
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          {isAdmin && selectedEmployeeId !== 'me' && selectedEmployee && (
+            <div className="text-sm text-gray-600">
+              Đang xem lương của: <span className="font-medium text-gray-900">{selectedEmployee.fullName || selectedEmployee.email}</span>
+            </div>
+          )}
+
+          {payroll && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="text-xs text-gray-500 mb-1">Ngày công</div>
+                <div className="text-lg font-semibold text-gray-900">{payroll.workingDays}</div>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="text-xs text-gray-500 mb-1">Ngày nghỉ</div>
+                <div className="text-lg font-semibold text-gray-900">{payroll.leaveDays}</div>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="text-xs text-gray-500 mb-1">Lương/ngày</div>
+                <div className="text-lg font-semibold text-gray-900">{formatCurrency(payroll.salaryPerDay)}</div>
+              </div>
+            </div>
+          )}
 
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             {/* Gross Salary */}
