@@ -196,13 +196,6 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
           </Button>
         </form>
       </Form>
-
-      <div className="mt-8 text-center text-sm">
-        <span className="text-slate-500">Don&apos;t have an account? </span>
-        <button onClick={onRegister} className="font-semibold text-blue-600 hover:text-blue-500 hover:underline">
-          Create an account
-        </button>
-      </div>
     </div>
   );
 }

@@ -614,7 +614,12 @@ export function CoreHR({ user }: CoreHRProps) {
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 bg-white border border-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm">
-                                {(emp.fullName || 'U').split(' ').pop()?.charAt(0) || 'U'}
+                                {(() => {
+                                  const name = emp.fullName || emp.email || '';
+                                  const parts = name.split(' ').filter(Boolean);
+                                  const lastPart = parts.length > 0 ? parts[parts.length - 1] : '';
+                                  return lastPart && lastPart.length > 0 ? lastPart.charAt(0).toUpperCase() : 'U';
+                                })()}
                               </div>
                               <div>
                                 <div className="text-sm font-bold text-slate-800 group-hover:text-purple-700">{emp.fullName || 'N/A'}</div>
@@ -679,7 +684,12 @@ export function CoreHR({ user }: CoreHRProps) {
 
                     <div className="flex items-start gap-6 mb-8">
                           <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg">
-                        {(selectedEmployee.fullName || 'U').split(' ').pop()?.charAt(0).toUpperCase() || 'U'}
+                        {(() => {
+                          const name = selectedEmployee.fullName || selectedEmployee.email || '';
+                          const parts = name.split(' ').filter(Boolean);
+                          const lastPart = parts.length > 0 ? parts[parts.length - 1] : '';
+                          return lastPart && lastPart.length > 0 ? lastPart.charAt(0).toUpperCase() : 'U';
+                        })()}
                       </div>
                       <div className="flex-1">
                         <h3 className="text-2xl font-black text-slate-900 mb-2">
@@ -900,11 +910,11 @@ export function CoreHR({ user }: CoreHRProps) {
                 </div>
                 <div className="flex items-center gap-6 mb-12">
                   <div className="w-20 h-20 bg-purple-100 rounded-3xl flex items-center justify-center text-2xl font-black text-purple-600">
-                    {user.fullName.charAt(0)}
+                    {(user.fullName && user.fullName.length > 0) ? user.fullName.charAt(0) : (user.email ? user.email.charAt(0).toUpperCase() : 'U')}
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-slate-900">{user.fullName}</h3>
-                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">{user.role} • {user.department}</p>
+                    <h3 className="text-3xl font-black text-slate-900">{user.fullName || user.email || 'N/A'}</h3>
+                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">{user.role || 'N/A'} • {user.department || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">

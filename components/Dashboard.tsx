@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Shield, Users, DollarSign, Clock, UserPlus, Settings, Activity } from 'lucide-react';
 import { IAMCore } from './modules/IAMCore';
 import { CoreHR } from './modules/CoreHR';
@@ -18,6 +19,7 @@ type ModuleType = 'overview' | 'iam' | 'coreHR' | 'compensation' | 'time' | 'ats
 
 export function Dashboard({ user, securityContext }: DashboardProps) {
   const [activeModule, setActiveModule] = useState<ModuleType>('overview');
+  const router = useRouter();
 
   const modules = [
     {
@@ -99,6 +101,56 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     hasAccess(module.roles, user.role)
   );
 
+  // Check admin: decode JWT token để lấy role name thực tế
+  const checkIsAdmin = (): boolean => {
+    try {
+      // Ưu tiên 1: Decode JWT token để lấy role name
+      const token = typeof window !== 'undefined' 
+        ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken'))
+        : null;
+      
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.role) {
+            // Role trong token có thể là object với name hoặc string
+            let roleName = '';
+            if (typeof payload.role === 'object' && payload.role !== null && payload.role.name) {
+              roleName = payload.role.name;
+            } else if (typeof payload.role === 'string') {
+              roleName = payload.role;
+            }
+            
+            if (roleName) {
+              const normalized = normalizeRole(roleName).toLowerCase();
+              return normalized.includes('admin');
+            }
+          }
+        } catch (e) {
+          console.warn('Error decoding JWT token for admin check:', e);
+        }
+      }
+
+      // Ưu tiên 2: Check user.role trực tiếp (có thể là roleId UUID hoặc role name)
+      if (user.role) {
+        const normalized = normalizeRole(user.role).toLowerCase();
+        // Nếu là UUID (36 ký tự với dấu gạch ngang), không phải admin
+        if (normalized.length === 36 && normalized.includes('-')) {
+          return false; // roleId UUID, không phải role name
+        }
+        // Nếu chứa "admin" thì là admin
+        return normalized.includes('admin');
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
+  };
+
+  const isAdmin = checkIsAdmin();
+
   // Nếu không có module nào match, hiển thị tất cả (fallback)
   // Hoặc có thể hiển thị message cảnh báo
   const finalAccessibleModules = accessibleModules.length > 0 ? accessibleModules : modules;
@@ -133,6 +185,18 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 Welcome, {user.fullName}!
               </h2>
+              {isAdmin && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => router.push('/register')}
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-blue-700 transition-colors"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Tạo tài khoản mới
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Quick Stats */}
