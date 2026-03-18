@@ -55,7 +55,7 @@ export const authService = {
     // Map response từ API sang UserProfile format
     const userProfile: UserProfile = {
       id: response.user.id,
-      name: response.user.fullName, // Map fullName -> name
+      fullName: response.user.fullName, // Map fullName -> fullName
       email: response.user.email,
       role: response.user.roleId, // Map roleId -> role (hoặc có thể cần lookup role name từ roleId)
       department: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau

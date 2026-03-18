@@ -19,27 +19,20 @@ import {
   Building2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Gender, Department, Position } from "@/types/types";
+import { Gender, Position } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authService } from "@/services/auth.service";
+import { departmentService, Department as APIDepartment } from "@/services/department.service";
 
 // --- 1. SCHEMA VALIDATION ---
 const registerSchema = z
   .object({
     fullName: z.string().min(2, "Họ tên quá ngắn"),
     gender: z.enum([Gender.MALE, Gender.FEMALE, Gender.OTHER]),
-    department: z.enum([
-      Department.SelectDepartment,
-      Department.CEO,
-      Department.HR,
-      Department.IT,
-      Department.Finance,
-      Department.Marketing,
-      Department.Sales,
-    ]),
+    department: z.string().min(1, "Vui lòng chọn phòng ban"),
     position: z.enum([Position.CEO, Position.Manager, Position.Employee]),
     email: z.string().email("Email không hợp lệ"),
     phoneNumber: z
@@ -96,6 +89,8 @@ interface RegisterFormProps {
 export function RegisterForm({ onBack }: RegisterFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [departments, setDepartments] = useState<APIDepartment[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
 
   const {
     register,
@@ -107,50 +102,36 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       gender: Gender.MALE,
-      department: Department.SelectDepartment,
-      position: Position.Employee, // ✅ FIX: luôn có giá trị enum hợp lệ
+      department: "",
+      position: Position.Employee,
       taxCode: "",
     },
   });
 
-  const passwordValue = watch("password", "");
+  // Fetch departments from API on mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const data = await departmentService.getDepartments();
+        setDepartments(data);
+      } catch (error) {
+        console.error("Failed to fetch departments", error);
+        toast.error("Không thể tải danh sách phòng ban");
+      } finally {
+        setDepartmentsLoading(false);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
-  const selectedDepartment = watch("department");
+  const passwordValue = watch("password", "");
+  const selectedDepartmentId = watch("department");
   const selectedPosition = watch("position");
 
-  const departmentPositionMap = useMemo(
-    () => ({
-      [Department.CEO]: [Position.CEO],
-      [Department.HR]: [Position.Manager, Position.Employee],
-      [Department.IT]: [Position.Manager, Position.Employee],
-      [Department.Finance]: [Position.Manager, Position.Employee],
-      [Department.Marketing]: [Position.Manager, Position.Employee],
-      [Department.Sales]: [Position.Manager, Position.Employee],
-      // SelectDepartment không map => sẽ rơi xuống default
-    }),
-    []
-  );
-
-  // ✅ FIX: Khi chưa chọn department hợp lệ -> positions rỗng (để disable đúng)
-  const availablePositions = useMemo(() => {
-    if (selectedDepartment === Department.SelectDepartment) return [];
-    return departmentPositionMap[selectedDepartment] ?? [Position.Employee];
-  }, [departmentPositionMap, selectedDepartment]);
-
-  useEffect(() => {
-    // Khi chưa chọn department thật: reset position về Employee (giữ enum hợp lệ)
-    if (selectedDepartment === Department.SelectDepartment) {
-      if (selectedPosition !== Position.Employee) {
-        setValue("position", Position.Employee, { shouldValidate: true });
-      }
-      return;
-    }
-
-    // Khi đã chọn department: đảm bảo position nằm trong list hợp lệ
-    if (availablePositions.length > 0 && !availablePositions.includes(selectedPosition)) {
-      setValue("position", availablePositions[0], { shouldValidate: true });
-    }
-  }, [availablePositions, selectedDepartment, selectedPosition, setValue]);
+  // Since we are using dynamic IDs now, the previous position mapping by name might not work as before.
+  // For now, let's allow all positions for any department since we don't have a reliable mapping for dynamic IDs.
+  // Unless the user wants to keep a specific mapping for certain IDs.
+  const availablePositions = [Position.Manager, Position.Employee];
 
   // Tính ngày max cho input date (Hôm nay - 18 năm)
   const maxDate = new Date();
@@ -310,21 +291,19 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               </Label>
               <select
                 {...register("department")}
-                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${
+                disabled={departmentsLoading}
+                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${
                   errors.department ? "border-red-500" : "border-slate-200"
                 }`}
               >
-                {/* ✅ FIX: không dùng value="" để khỏi fail z.enum */}
-                <option value={Department.SelectDepartment}>Select department</option>
-
-                {/* ✅ tránh render trùng SelectDepartment */}
-                {Object.values(Department)
-                  .filter((d) => d !== Department.SelectDepartment)
-                  .map((department) => (
-                    <option key={department} value={department}>
-                      {department}
-                    </option>
-                  ))}
+                <option value="">
+                  {departmentsLoading ? "Đang tải phòng ban..." : "Chọn phòng ban"}
+                </option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name} ({dept.code})
+                  </option>
+                ))}
               </select>
               {errors.department && (
                 <p className="text-red-500 text-xs mt-1">
@@ -340,14 +319,13 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               <div className="relative">
                 <select
                   {...register("position")}
-                  disabled={selectedDepartment === Department.SelectDepartment}
+                  disabled={!selectedDepartmentId}
                   className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${
                     errors.position ? "border-red-500" : "border-slate-200"
                   }`}
                 >
-                  {/* ✅ FIX: không dùng value="" */}
-                  {selectedDepartment === Department.SelectDepartment ? (
-                    <option value={Position.Employee}>Select position</option>
+                  {!selectedDepartmentId ? (
+                    <option value={Position.Employee}>Chọn phòng ban trước</option>
                   ) : null}
 
                   {availablePositions.map((position) => (

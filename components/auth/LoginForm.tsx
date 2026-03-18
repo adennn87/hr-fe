@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Loader2, ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Loader2, ArrowRight, Eye, EyeOff, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { authService } from '@/services/auth.service'; // IMPORT SERVICE
+import { authService } from '@/services/auth.service';
+// import { departmentService, Department } from '@/services/department.service';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
 
 const loginSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
@@ -37,6 +45,24 @@ interface LoginFormProps {
 export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, onRegister }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // const [departments, setDepartments] = useState<Department[]>([]);
+  // const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  // const [departmentsLoading, setDepartmentsLoading] = useState(true);
+
+  // // Fetch departments from API on mount
+  // useEffect(() => {
+  //   const fetchDepartments = async () => {
+  //     try {
+  //       const data = await departmentService.getDepartments();
+  //       setDepartments(data);
+  //     } catch {
+  //       setDepartments([]);
+  //     } finally {
+  //       setDepartmentsLoading(false);
+  //     }
+  //   };
+  //   fetchDepartments();
+  // }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -49,27 +75,30 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
   const handleLogin = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      // Lưu email và password vào sessionStorage để dùng sau khi verify OTP
+      // Lưu email, password và department vào sessionStorage để dùng sau khi verify OTP
       sessionStorage.setItem('pendingLoginEmail', data.email);
       sessionStorage.setItem('pendingLoginPassword', data.password);
-      
+      // if (selectedDepartment) {
+      //   sessionStorage.setItem('selectedDepartment', selectedDepartment.id);
+      // }
+
       // Gọi API loginOtp để gửi OTP
       await authService.loginOtp(data.email, data.password);
-      
+
       setIdentifier(data.email);
-      
+
       // Luôn chuyển sang màn hình MFA sau khi gửi OTP thành công
       toast.success("Mã OTP đã được gửi đến email của bạn");
       onSuccess(); // Chuyển sang form MFA
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Xóa pending credentials nếu lỗi
       sessionStorage.removeItem('pendingLoginEmail');
       sessionStorage.removeItem('pendingLoginPassword');
-      
-      toast.error("Đăng nhập thất bại", {
-        description: error.message || "Kiểm tra lại email hoặc mật khẩu"
-      });
+      sessionStorage.removeItem('selectedDepartment');
+
+      const errMsg = error instanceof Error ? error.message : "Kiểm tra lại email hoặc mật khẩu";
+      toast.error("Đăng nhập thất bại", { description: errMsg });
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +121,13 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
     await handleLogin(demoCredentials);
   };
 
+  void handleQuickDemoLogin; // unused but kept for future use
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
         <h2 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h2>
         <p className="text-slate-500 mt-2 text-sm">Enter your credentials to access the workspace.</p>
-        {/* <p className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-          Demo admin: <strong>admin@hr.com.vn</strong> / <strong>Admin@123</strong>
-        </p> */}
       </div>
 
       <Form {...form}>
@@ -135,11 +163,11 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
                 </div>
                 <FormControl>
                   <div className="relative">
-                    <Input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="••••••••" 
-                      {...field} 
-                      className="h-11 pr-10" 
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      {...field}
+                      className="h-11 pr-10"
                     />
                     <button
                       type="button"

@@ -8,7 +8,7 @@ export enum Gender {
 
 export interface UserProfile {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   role: string;
   department: string;
