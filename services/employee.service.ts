@@ -77,9 +77,18 @@ export const employeeService = {
         const { password, ...employeeWithoutPassword } = emp;
         return {
           ...employeeWithoutPassword,
-          department: typeof emp.department === 'object' ? emp.department.name : emp.department,
-          departmentCode: typeof emp.department === 'object' ? emp.department.code : null,
-          role: typeof emp.role === 'object' ? emp.role.name : emp.role,
+          department:
+            emp.department && typeof emp.department === 'object'
+              ? emp.department.name
+              : (emp.department ?? null),
+          departmentCode:
+            emp.department && typeof emp.department === 'object'
+              ? emp.department.code
+              : null,
+          role:
+            emp.role && typeof emp.role === 'object'
+              ? emp.role.name
+              : (emp.role ?? null),
         };
       }),
     }));
@@ -155,9 +164,18 @@ export const employeeService = {
     const { password, ...employeeWithoutPassword } = data;
     return {
       ...employeeWithoutPassword,
-      department: typeof data.department === 'object' ? data.department.name : data.department,
-      departmentCode: typeof data.department === 'object' ? data.department.code : null,
-      role: typeof data.role === 'object' ? data.role.name : data.role,
+      department:
+        data.department && typeof data.department === 'object'
+          ? data.department.name
+          : (data.department ?? null),
+      departmentCode:
+        data.department && typeof data.department === 'object'
+          ? data.department.code
+          : null,
+      role:
+        data.role && typeof data.role === 'object'
+          ? data.role.name
+          : (data.role ?? null),
     };
   },
 

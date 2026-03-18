@@ -136,8 +136,14 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       // Flatten department và role objects
       const flattened = data.map((emp: any) => ({
         ...emp,
-        department: typeof emp.department === 'object' ? emp.department.name : emp.department,
-        role: typeof emp.role === 'object' ? emp.role.name : emp.role,
+        department:
+          emp.department && typeof emp.department === 'object'
+            ? emp.department.name
+            : (emp.department ?? null),
+        role:
+          emp.role && typeof emp.role === 'object'
+            ? emp.role.name
+            : (emp.role ?? null),
       }));
       setEmployees(flattened);
     } catch (error: any) {

@@ -290,8 +290,14 @@ export function CoreHR({ user }: CoreHRProps) {
       // Flatten department và role objects
       const flattened = data.map((emp: any) => ({
         ...emp,
-        department: typeof emp.department === 'object' ? emp.department.name : emp.department,
-        role: typeof emp.role === 'object' ? emp.role.name : emp.role,
+        department:
+          emp.department && typeof emp.department === 'object'
+            ? emp.department.name
+            : (emp.department ?? null),
+        role:
+          emp.role && typeof emp.role === 'object'
+            ? emp.role.name
+            : (emp.role ?? null),
       }));
       setAllEmployees(flattened);
     } catch (error: any) {
@@ -461,14 +467,14 @@ export function CoreHR({ user }: CoreHRProps) {
     };
 
     try {
-      if (editingEmployeeId) {
+    if (editingEmployeeId) {
         await employeeService.updateEmployee(editingEmployeeId, payload);
         toast.success('Cập nhật nhân sự thành công');
-      } else {
+    } else {
         await employeeService.createEmployee(payload);
         toast.success('Tạo nhân sự mới thành công');
       }
-      setIsModalOpen(false);
+    setIsModalOpen(false);
       // Refresh data
       await fetchEmployeesByDepartment();
       if (activeTab === 'profile' && isSystemAdmin) {
@@ -551,9 +557,9 @@ export function CoreHR({ user }: CoreHRProps) {
                 <p className="text-slate-500 text-sm">Sơ đồ tổ chức sẽ được hiển thị khi có dữ liệu nhân sự.</p>
               </div>
             ) : (
-              <div className="grid gap-4">
-                {orgChart.map((dept) => {
-                  const isExpanded = expandedDepts.includes(dept.id);
+            <div className="grid gap-4">
+              {orgChart.map((dept) => {
+                const isExpanded = expandedDepts.includes(dept.id);
                   // Lấy employees từ departmentsData
                   let deptEmps: Employee[] = [];
                   if (dept.deptKey === 'CEO') {
@@ -639,9 +645,9 @@ export function CoreHR({ user }: CoreHRProps) {
                       </div>
                     )}
                   </div>
-                  );
-                })}
-              </div>
+                );
+              })}
+            </div>
             )}
           </div>
         )}
@@ -672,7 +678,7 @@ export function CoreHR({ user }: CoreHRProps) {
                     </div>
 
                     <div className="flex items-start gap-6 mb-8">
-                      <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg">
+                          <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg">
                         {(selectedEmployee.fullName || 'U').split(' ').pop()?.charAt(0).toUpperCase() || 'U'}
                       </div>
                       <div className="flex-1">
@@ -963,7 +969,7 @@ export function CoreHR({ user }: CoreHRProps) {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {allocatedAssets.map((allocatedAsset) => {
                       const asset = allocatedAsset.asset;
                       const statusColor = allocatedAsset.status === 'allocated' 
@@ -980,14 +986,14 @@ export function CoreHR({ user }: CoreHRProps) {
 
                       return (
                         <div key={allocatedAsset.id} className="bg-white border border-slate-200 rounded-[24px] p-6 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-inner">
-                              <Laptop className="w-6 h-6" />
-                            </div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-inner">
+                      <Laptop className="w-6 h-6" />
+                    </div>
                             <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${statusColor}`}>
                               {statusText}
                             </span>
-                          </div>
+                  </div>
                           <h4 className="font-black text-slate-900 text-lg mb-1">{asset.name}</h4>
                           <p className="text-xs font-mono text-slate-400 mb-2">SN: {asset.serialNumber}</p>
                           <p className="text-xs text-slate-500 mb-1">
@@ -1001,7 +1007,7 @@ export function CoreHR({ user }: CoreHRProps) {
                           </p>
                           <div className="space-y-2 border-t border-slate-50 pt-4">
                             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                              <span>Cấp ngày</span>
+                    <span>Cấp ngày</span>
                               <span className="text-slate-900">
                                 {allocatedAsset.allocatedDate ? new Date(allocatedAsset.allocatedDate).toLocaleDateString('vi-VN') : 'N/A'}
                               </span>
@@ -1033,7 +1039,7 @@ export function CoreHR({ user }: CoreHRProps) {
                 </div>
                 <h4 className="text-lg font-bold text-slate-900 mb-2">Không thể tải tài sản</h4>
                 <p className="text-slate-500 text-sm">Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.</p>
-              </div>
+            </div>
             )}
           </div>
         )}
