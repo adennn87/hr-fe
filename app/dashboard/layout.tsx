@@ -13,7 +13,6 @@ const navItems = [
   { href: '/dashboard/employees', label: 'Nhân sự' },
   { href: '/dashboard/attendance', label: 'Lịch làm việc' },
   { href: '/dashboard/payroll', label: 'Lương thưởng' },
-  { href: '/dashboard/recruitment', label: 'Tuyển dụng' },
 ];
 
 
