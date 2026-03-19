@@ -5,6 +5,7 @@ import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings } fr
 import { User } from '@/lib/auth-types';
 import { employeeService, type Employee } from '@/services/employee.service';
 import { payrollService, type PayrollDetail, type PayrollMonthRow } from '@/services/payroll.service';
+import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,7 +22,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [activeTab, setActiveTab] = useState<'salary' | 'payslip' | 'benefits'>('salary');
   const [requireStepUp, setRequireStepUp] = useState(false);
   const [stepUpVerified, setStepUpVerified] = useState(false);
-  const [userRoleName, setUserRoleName] = useState<string | null>(null);
+  const [userRoleId, setUserRoleId] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(false);
 
   // Admin UI: chọn nhân viên theo ID để xem lương
@@ -40,37 +41,19 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     return employees.find((e) => e.id === selectedEmployeeId) || null;
   }, [employees, selectedEmployeeId]);
 
-  // Lấy role name từ JWT token hoặc API
+  // Lấy role id từ JWT token hoặc user.role
   useEffect(() => {
     const fetchUserRole = async () => {
       setIsLoadingRole(true);
       try {
-        const token =
-          typeof window !== 'undefined'
-            ? sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')
-            : null;
-        if (token) {
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role) {
-              if (typeof payload.role === 'object' && payload.role !== null && payload.role.name) {
-                setUserRoleName(payload.role.name);
-                return;
-              }
-              if (typeof payload.role === 'string') {
-                setUserRoleName(payload.role);
-                return;
-              }
-            }
-          } catch (e) {
-            console.warn('Error decoding JWT token:', e);
-          }
+        const jwtRole = getJwtRoleInfo();
+        if (jwtRole.roleId) {
+          setUserRoleId(jwtRole.roleId);
+          return;
         }
 
-        // Fallback: dùng user.role trực tiếp (có thể là UUID hoặc role name)
-        if (user.role) {
-          setUserRoleName(user.role);
-        }
+        // Fallback: user.role có thể đã là roleId UUID
+        setUserRoleId(normalizeRoleId(user.role));
       } catch (error) {
         console.error('Error fetching user role:', error);
       } finally {
@@ -80,11 +63,10 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     fetchUserRole();
   }, [user.role]);
 
-  // Check nếu user là admin
+  // Check admin theo roleId
   const isAdmin = useMemo(() => {
-    if (!userRoleName) return false;
-    return userRoleName.toLowerCase().includes('admin');
-  }, [userRoleName]);
+    return isAdminRoleId(userRoleId);
+  }, [userRoleId]);
 
   // Load employees cho dropdown khi admin vào tab salary
   useEffect(() => {

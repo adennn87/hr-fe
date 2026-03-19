@@ -50,7 +50,7 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
         // Map response từ API sang UserProfile format, map full_name -> fullName nếu backend trả về snake_case
         const userProfile: UserProfile = {
           id: response.user.id,
-          name: response.user.fullName || response.user.full_name || '',
+          fullName: response.user.fullName || response.user.full_name || (response.user as any).name || '',
           email: response.user.email,
           role: response.user.roleId,
           department: '',

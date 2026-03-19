@@ -9,6 +9,7 @@ import { TimeAttendance } from './modules/TimeAttendance';
 import { ATS } from './modules/ATS';
 import { AdminAudit } from './modules/AdminAudit';
 import { User, SecurityContextData } from '@/lib/auth-types';
+import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
 
 interface DashboardProps {
   user: User;
@@ -20,6 +21,8 @@ type ModuleType = 'overview' | 'iam' | 'coreHR' | 'compensation' | 'time' | 'ats
 export function Dashboard({ user, securityContext }: DashboardProps) {
   const [activeModule, setActiveModule] = useState<ModuleType>('overview');
   const router = useRouter();
+  const fullName = (user.fullName || (user as any).full_name || '').trim();
+  const displayName = fullName || user.email?.split('@')[0] || 'User';
 
   const modules = [
     {
@@ -106,47 +109,15 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
 
   useEffect(() => {
     try {
-      // Ưu tiên 1: Decode JWT token để lấy role name
-      const token =
-        typeof window !== 'undefined'
-          ? sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')
-          : null;
-
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          if (payload.role) {
-            let roleName = '';
-            if (typeof payload.role === 'object' && payload.role !== null && payload.role.name) {
-              roleName = payload.role.name;
-            } else if (typeof payload.role === 'string') {
-              roleName = payload.role;
-            }
-
-            if (roleName) {
-              const normalized = normalizeRole(roleName).toLowerCase();
-              setIsAdmin(normalized.includes('admin'));
-              return;
-            }
-          }
-        } catch (e) {
-          console.warn('Error decoding JWT token for admin check:', e);
-        }
-      }
-
-      // Ưu tiên 2: Check user.role trực tiếp (có thể là roleId UUID hoặc role name)
-      if (user.role) {
-        const normalized = normalizeRole(user.role).toLowerCase();
-        // Nếu là UUID (36 ký tự với dấu gạch ngang), không phải admin
-        if (normalized.length === 36 && normalized.includes('-')) {
-          setIsAdmin(false);
-          return;
-        }
-        setIsAdmin(normalized.includes('admin'));
+      const jwtRole = getJwtRoleInfo();
+      if (jwtRole.roleId) {
+        setIsAdmin(isAdminRoleId(jwtRole.roleId));
         return;
       }
 
-      setIsAdmin(false);
+      // Fallback: user.role có thể đang là roleId UUID
+      const fallbackRoleId = normalizeRoleId(user.role);
+      setIsAdmin(isAdminRoleId(fallbackRoleId));
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
@@ -185,7 +156,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome, {user.fullName}!
+                Welcome, {displayName}!
               </h2>
               {isAdmin && (
                 <div className="mt-3">

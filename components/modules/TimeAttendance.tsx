@@ -19,6 +19,7 @@ import {
 import { weeklyScheduleService, type CreateWeeklyScheduleRequest, type WeeklyScheduleDay, type WeeklySchedule } from '@/services/weekly-schedule.service';
 import { leaveRequestService, type LeaveRequest, type LeaveType } from '@/services/leave-request.service';
 import { employeeService, type Employee } from '@/services/employee.service';
+import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
 import { toast } from 'sonner';
 
 interface TimeAttendanceProps {
@@ -67,61 +68,23 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     ],
   });
 
-  // State để lưu role name từ API hoặc token
-  const [userRoleName, setUserRoleName] = useState<string | null>(null);
+  // State để lưu role id từ token/user
+  const [userRoleId, setUserRoleId] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(false);
 
-  // Lấy role name từ JWT token hoặc API
+  // Lấy role id từ JWT token hoặc user.role
   useEffect(() => {
     const fetchUserRole = async () => {
       setIsLoadingRole(true);
       try {
-        // Ưu tiên 1: Lấy từ JWT token
-        const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
-        if (token) {
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role) {
-              // Role trong token có thể là object với name hoặc string
-              if (typeof payload.role === 'object' && payload.role !== null && payload.role.name) {
-                setUserRoleName(payload.role.name);
-                setIsLoadingRole(false);
-                return;
-              }
-              if (typeof payload.role === 'string') {
-                setUserRoleName(payload.role);
-                setIsLoadingRole(false);
-                return;
-              }
-            }
-          } catch (e) {
-            console.warn('Error decoding JWT token:', e);
-          }
+        const jwtRole = getJwtRoleInfo();
+        if (jwtRole.roleId) {
+          setUserRoleId(jwtRole.roleId);
+          return;
         }
 
-        // Ưu tiên 2: Nếu user.role là UUID, gọi API để lấy role name
-        if (user.id && user.role) {
-          try {
-            const employee = await employeeService.getEmployeeById(user.id);
-            if (employee.role) {
-              const roleName = typeof employee.role === 'object' ? employee.role.name : employee.role;
-              if (roleName) {
-                setUserRoleName(roleName);
-                setIsLoadingRole(false);
-                return;
-              }
-            }
-          } catch (e) {
-            console.warn('Error fetching user role from API:', e);
-          }
-        }
-
-        // Fallback: Dùng user.role trực tiếp nếu là string
-        if (typeof user.role === 'string' && user.role) {
-          setUserRoleName(user.role);
-        } else if (typeof user.role === 'object' && user.role !== null && (user.role as any).name) {
-          setUserRoleName((user.role as any).name);
-        }
+        // Fallback: user.role có thể đã là roleId UUID
+        setUserRoleId(normalizeRoleId(user.role));
       } catch (error) {
         console.error('Error fetching user role:', error);
       } finally {
@@ -132,21 +95,20 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     fetchUserRole();
   }, [user.id, user.role]);
 
-  // Check nếu user là admin - chỉ check role name === "admin"
+  // Check admin theo roleId
   const isAdmin = useMemo(() => {
-    if (!userRoleName) return false;
-    return userRoleName.toLowerCase() === 'admin';
-  }, [userRoleName]);
+    return isAdminRoleId(userRoleId);
+  }, [userRoleId]);
   
   // Debug log để kiểm tra role
   useEffect(() => {
     console.log('TimeAttendance - User role check:', {
       rawRole: user.role,
-      userRoleName,
+      userRoleId,
       isAdmin,
       userObject: user
     });
-  }, [user.role, userRoleName, isAdmin, user]);
+  }, [user.role, userRoleId, isAdmin, user]);
 
   // Load danh sách employees khi mở modal
   useEffect(() => {

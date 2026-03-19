@@ -17,6 +17,23 @@ export const GUEST_USER: User = {
 let cachedRawUser: string | null | undefined;
 let cachedUser: User = GUEST_USER;
 
+const normalizeStoredUser = (rawUser: any): User => {
+  const fullName =
+    (rawUser?.fullName || rawUser?.full_name || rawUser?.name || '').toString().trim();
+
+  return {
+    id: rawUser?.id || GUEST_USER.id,
+    fullName: fullName || GUEST_USER.fullName,
+    email: rawUser?.email || GUEST_USER.email,
+    role: rawUser?.role || GUEST_USER.role,
+    department: rawUser?.department || GUEST_USER.department,
+    location: rawUser?.location || GUEST_USER.location,
+    avatar: rawUser?.avatar || '',
+    mfaEnabled: Boolean(rawUser?.mfaEnabled),
+    taxCode: rawUser?.taxCode,
+  };
+};
+
 function readUserSnapshot(): User {
   if (typeof window === 'undefined') {
     return GUEST_USER;
@@ -37,7 +54,7 @@ function readUserSnapshot(): User {
   }
 
   try {
-    cachedUser = JSON.parse(raw) as User;
+    cachedUser = normalizeStoredUser(JSON.parse(raw));
   } catch {
     cachedUser = GUEST_USER;
   }
