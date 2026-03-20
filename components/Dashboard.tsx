@@ -6,8 +6,6 @@ import { IAMCore } from './modules/IAMCore';
 import { CoreHR } from './modules/CoreHR';
 import { CompensationBenefits } from './modules/CompensationBenefits';
 import { TimeAttendance } from './modules/TimeAttendance';
-import { ATS } from './modules/ATS';
-import { AdminAudit } from './modules/AdminAudit';
 import { User, SecurityContextData } from '@/lib/auth-types';
 import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
 
@@ -57,22 +55,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
       color: 'orange',
       roles: ['System Admin', 'HR Manager', 'Employee']
     },
-    {
-      id: 'ats' as ModuleType,
-      name: 'Tuyển dụng',
-      description: 'ATS - Applicant Tracking',
-      icon: UserPlus,
-      color: 'pink',
-      roles: ['System Admin', 'HR Manager']
-    },
-    {
-      id: 'admin' as ModuleType,
-      name: 'Quản trị & Giám sát',
-      description: 'Admin & Audit',
-      icon: Activity,
-      color: 'red',
-      roles: ['System Admin']
-    }
+
   ];
 
   // Helper function để normalize role name
@@ -147,10 +130,6 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
         return <CompensationBenefits user={user} />;
       case 'time':
         return <TimeAttendance user={user} />;
-      case 'ats':
-        return <ATS user={user} />;
-      case 'admin':
-        return <AdminAudit user={user} />;
       default:  
         return (
           <div className="space-y-6">
