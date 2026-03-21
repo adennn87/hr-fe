@@ -1,13 +1,22 @@
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   fullName: string;
   email: string;
-  role: string;
-  department: string;
+  role: Role | string;
+  department: string | { id: string; name: string };
   location: string;
   avatar: string;
   mfaEnabled: boolean;
   taxCode?: string; // Thêm trường taxCode tùy chọn
+  permissions: string[];
 }
 
 export interface SecurityContextData {

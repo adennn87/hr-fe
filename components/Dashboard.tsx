@@ -59,14 +59,15 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
   ];
 
   // Helper function để normalize role name
-  const normalizeRole = (role: string): string => {
+  const normalizeRole = (role: any): string => {
     if (!role) return '';
+    if (typeof role === 'object' && role.name) return role.name;
     const roleStr = typeof role === 'string' ? role : String(role);
     return roleStr.trim();
   };
 
   // Helper function để check role match (case-insensitive và flexible matching)
-  const hasAccess = (moduleRoles: string[], userRole: string): boolean => {
+  const hasAccess = (moduleRoles: string[], userRole: any): boolean => {
     const normalizedUserRole = normalizeRole(userRole).toLowerCase();
     return moduleRoles.some(moduleRole => {
       const normalizedModuleRole = normalizeRole(moduleRole).toLowerCase();

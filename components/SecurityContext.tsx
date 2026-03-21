@@ -85,7 +85,9 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
               )}
               <div className="text-left">
                 <div className="text-sm font-medium text-gray-900">{safeUserName}</div>
-                <div className="text-xs text-gray-500">{user.role}</div>
+                <div className="text-xs text-gray-500">
+                  {typeof user.role === 'object' ? user.role.name : user.role}
+                </div>
               </div>
               <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
             </button>

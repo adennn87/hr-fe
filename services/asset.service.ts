@@ -121,4 +121,162 @@ export const assetService = {
     console.log('✅ Returning assets:', result.length, 'items');
     return result;
   },
+
+  /**
+   * Lấy toàn bộ danh sách tài sản được cấp phát (dành cho Admin/Manager)
+   * API endpoint: GET /allocated-assets/allocate/list?status=
+   */
+  async getAllocatedAssets(status: string = ''): Promise<any[]> {
+    const baseUrl = API_URL.replace('/api', '');
+    
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    }
+
+    if (!token) {
+      throw new Error('Authorization token is required');
+    }
+
+    const response = await fetch(`${baseUrl}/allocated-assets/allocate/list?status=${status}`, {
+      method: 'GET',
+      headers: {
+        'accept': '/',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  /**
+   * Lấy toàn bộ danh sách tài sản trong kho
+   * API endpoint: GET /allocated-assets/asscetAll
+   */
+  async getInventoryAssets(): Promise<Asset[]> {
+    const baseUrl = API_URL.replace('/api', '');
+    
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    }
+
+    if (!token) {
+      throw new Error('Authorization token is required');
+    }
+
+    const response = await fetch(`${baseUrl}/allocated-assets/asscetAll`, {
+      method: 'GET',
+      headers: {
+        'accept': '*/*',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  // Asset CRUD
+  async createAsset(data: any): Promise<Asset> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')) : null;
+    
+    const response = await fetch(`${baseUrl}/allocated-assets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to create asset');
+    }
+    return await response.json();
+  },
+
+  async updateAsset(id: string, data: any): Promise<Asset> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')) : null;
+    
+    const response = await fetch(`${baseUrl}/allocated-assets/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to update asset');
+    }
+    return await response.json();
+  },
+
+  async deleteAsset(id: string): Promise<void> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')) : null;
+    
+    const response = await fetch(`${baseUrl}/assets/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error('Failed to delete asset');
+  },
+
+  // Allocation CRUD
+  async allocateAsset(data: { userId: string, assetId: string, allocatedDate: string, note: string }): Promise<any> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')) : null;
+    
+    const response = await fetch(`${baseUrl}/allocated-assets/allocate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to allocate asset');
+    }
+    return await response.json();
+  },
+
+  async returnAsset(allocationId: string): Promise<void> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')) : null;
+    
+    const response = await fetch(`${baseUrl}/allocated-assets/alicatedAsset?id=${allocationId}`, {
+      method: 'DELETE',
+      headers: {
+        'accept': '*/*',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to return asset');
+    }
+  },
 };

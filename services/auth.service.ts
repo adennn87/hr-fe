@@ -28,6 +28,13 @@ export interface LoginResponse {
     full_name?: string;
     name?: string;
     roleId: string;
+    role?: {
+      id: string;
+      name: string;
+      description?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    };
     permissions: string[];
   };
 }
@@ -60,11 +67,12 @@ export const authService = {
       id: response.user.id,
       fullName: response.user.fullName || response.user.full_name || response.user.name || '', // Ưu tiên fullName từ DB
       email: response.user.email,
-      role: response.user.roleId, // Map roleId -> role (hoặc có thể cần lookup role name từ roleId)
+      role: response.user.role || response.user.roleId, // Ưu tiên role object
       department: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
       location: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
       avatar: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
       mfaEnabled: false, // Mặc định false, có thể cần check từ API hoặc profile
+      permissions: response.user.permissions || [],
     };
 
     return {

@@ -9,6 +9,9 @@ export type JwtRoleInfo = {
 };
 
 export const normalizeRoleId = (value: unknown): string | null => {
+  if (value && typeof value === 'object' && 'id' in value) {
+    return normalizeRoleId((value as any).id);
+  }
   if (typeof value !== 'string') return null;
   const normalized = value.trim().toLowerCase();
   if (!normalized) return null;
@@ -30,8 +33,11 @@ export const isAdminRoleId = (roleId: unknown): boolean => {
   return getAdminRoleIds().includes(normalizedRoleId);
 };
 
-/** Role dạng chuỗi từ `user.role` (JWT có thể không có roleId UUID). */
+/** Role dạng chuỗi hoặc object từ `user.role` */
 export const isAdminRoleName = (role: unknown): boolean => {
+  if (role && typeof role === 'object' && 'name' in role) {
+    return isAdminRoleName((role as any).name);
+  }
   if (typeof role !== 'string') return false;
   const s = role.trim().toLowerCase();
   return (
