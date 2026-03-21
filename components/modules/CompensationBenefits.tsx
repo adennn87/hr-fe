@@ -77,7 +77,17 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       setIsLoadingEmployees(true);
       try {
         const data = await employeeService.getAllEmployees();
-        setEmployees(data || []);
+        const flattened = (data || []).map((emp: any) => ({
+          ...emp,
+          fullName: emp.fullName || emp.full_name || '',
+          department:
+            emp.department && typeof emp.department === 'object'
+              ? emp.department.name
+              : emp.department ?? null,
+          role:
+            emp.role && typeof emp.role === 'object' ? emp.role.name : emp.role ?? null,
+        }));
+        setEmployees(flattened);
       } catch (error: any) {
         console.error('Error loading employees for payroll filter:', error);
         toast.error('Không thể tải danh sách nhân viên', {
@@ -159,6 +169,8 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
 
       const base = Number(payroll.baseSalary || 0);
       const allowance = Number(payroll.allowance || 0);
+      const ins = Number(payroll.insurance ?? 0);
+      const taxAmt = Number(payroll.tax ?? 0);
       const deduction = Number(payroll.deduction || 0) + sub;
       const gross = base + allowance + add;
       const net = Number(payroll.finalSalary || 0);
@@ -168,9 +180,9 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         allowances: allowance,
         bonuses: add,
         totalGross: gross,
-        insurance: 0,
-        tax: 0,
-        totalDeductions: deduction,
+        insurance: ins,
+        tax: taxAmt,
+        totalDeductions: deduction + ins + taxAmt,
         netSalary: net,
         workingDays: payroll.workingDays,
         leaveDays: payroll.leaveDays,
@@ -381,6 +393,29 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                 <div className="text-xs text-gray-500 mb-1">Lương/ngày</div>
                 <div className="text-lg font-semibold text-gray-900">{formatCurrency(payroll.salaryPerDay)}</div>
               </div>
+            </div>
+          )}
+
+          {payroll && payroll.leaves && payroll.leaves.length > 0 && (
+            <div className="border border-gray-200 rounded-lg p-4 bg-slate-50/80">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Chi tiết nghỉ phép trong tháng</h4>
+              <ul className="space-y-2 text-sm text-gray-700">
+                {payroll.leaves.map((lv) => (
+                  <li
+                    key={lv.id || `${lv.startDate}-${lv.endDate}-${lv.type}`}
+                    className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 pb-2 last:border-0 last:pb-0"
+                  >
+                    <span>
+                      {lv.startDate} → {lv.endDate}
+                    </span>
+                    <span className="text-gray-600">
+                      {lv.type}
+                      {lv.status ? ` · ${lv.status}` : ''}
+                      {lv.reason ? ` — ${lv.reason}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

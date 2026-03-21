@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { TimeAttendance } from '@/components/modules/TimeAttendance';
 import type { User } from '@/lib/auth-types';
 
@@ -14,7 +15,24 @@ const fallbackUser: User = {
   mfaEnabled: true,
 };
 
+function readUserFromStorage(): User {
+  if (typeof window === 'undefined') return fallbackUser;
+  try {
+    const raw = localStorage.getItem('user');
+    if (raw) return JSON.parse(raw) as User;
+  } catch {
+    /* ignore */
+  }
+  return fallbackUser;
+}
+
 export default function AttendancePage() {
-  const user = typeof window === 'undefined' ? fallbackUser : JSON.parse(localStorage.getItem('user') || JSON.stringify(fallbackUser));
+  /** Một lần mount + reference ổn định — tránh JSON.parse mỗi render làm con re-mount (popover/modal tự đóng). */
+  const [user, setUser] = useState<User>(fallbackUser);
+
+  useEffect(() => {
+    setUser(readUserFromStorage());
+  }, []);
+
   return <TimeAttendance user={user} />;
 }

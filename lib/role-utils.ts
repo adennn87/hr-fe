@@ -30,6 +30,23 @@ export const isAdminRoleId = (roleId: unknown): boolean => {
   return getAdminRoleIds().includes(normalizedRoleId);
 };
 
+/** Role dạng chuỗi từ `user.role` (JWT có thể không có roleId UUID). */
+export const isAdminRoleName = (role: unknown): boolean => {
+  if (typeof role !== 'string') return false;
+  const s = role.trim().toLowerCase();
+  return (
+    s === 'system admin' ||
+    s === 'administrator' ||
+    s === 'hr manager' ||
+    s === 'admin'
+  );
+};
+
+/** Admin: UUID trong env / default HOẶC tên role quản trị (System Admin, …). */
+export const isAdminUser = (userRoleId: unknown, userRole: unknown): boolean => {
+  return isAdminRoleId(userRoleId) || isAdminRoleName(userRole);
+};
+
 export const getJwtRoleInfo = (): JwtRoleInfo => {
   if (typeof window === 'undefined') {
     return { roleId: null, roleName: null };

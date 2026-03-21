@@ -1,13 +1,37 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, Calendar, MapPin, AlertCircle, CheckCircle, UserCheck, Plus, Loader2, Settings, Pencil, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Clock,
+  Calendar,
+  MapPin,
+  AlertCircle,
+  CheckCircle,
+  UserCheck,
+  Plus,
+  Loader2,
+  Settings,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  Check,
+} from 'lucide-react';
 import { User } from '@/lib/auth-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { cn } from '@/components/ui/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -17,13 +41,55 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { weeklyScheduleService, type CreateWeeklyScheduleRequest, type WeeklyScheduleDay, type WeeklySchedule } from '@/services/weekly-schedule.service';
-import { leaveRequestService, type LeaveRequest, type LeaveType } from '@/services/leave-request.service';
+import {
+  leaveRequestService,
+  type LeaveRequest,
+  type LeaveType,
+  getLeaveRequestEmployeeLabel,
+  getLeaveRequestUserId,
+} from '@/services/leave-request.service';
 import { employeeService, type Employee } from '@/services/employee.service';
-import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
+import { getJwtRoleInfo, isAdminRoleId, isAdminUser, normalizeRoleId } from '@/lib/role-utils';
 import { toast } from 'sonner';
 
 interface TimeAttendanceProps {
   user: User;
+}
+
+type WeekScheduleRow = {
+  day: string;
+  date: string;
+  shift: string;
+  status: 'scheduled' | 'today';
+  dayOfWeek: number;
+};
+
+/** Chọn bản ghi lịch tuần trùng tuần hiện tại hoặc gần nhất. */
+function pickCurrentWeekSchedule(schedules: WeeklySchedule[]): WeeklySchedule | null {
+  if (!schedules?.length) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const currentWeekStart = new Date(today);
+  const dayOfWeek = today.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  currentWeekStart.setDate(today.getDate() - daysToMonday);
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  let currentSchedule = schedules.find((s) => {
+    const scheduleStart = new Date(s.weekStartDate);
+    scheduleStart.setHours(0, 0, 0, 0);
+    return scheduleStart.getTime() === currentWeekStart.getTime();
+  });
+
+  if (!currentSchedule && schedules.length > 0) {
+    const sortedSchedules = [...schedules].sort((a, b) => {
+      const dateA = new Date(a.weekStartDate).getTime();
+      const dateB = new Date(b.weekStartDate).getTime();
+      return dateB - dateA;
+    });
+    currentSchedule = sortedSchedules[0];
+  }
+  return currentSchedule ?? null;
 }
 
 export function TimeAttendance({ user }: TimeAttendanceProps) {
@@ -36,6 +102,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
   const [isCreateLeaveModalOpen, setIsCreateLeaveModalOpen] = useState(false);
   const [leaveSelectedUserId, setLeaveSelectedUserId] = useState<string | 'all'>('all');
+  const [leaveEmployeeFilterOpen, setLeaveEmployeeFilterOpen] = useState(false);
   const [leaveForm, setLeaveForm] = useState<{
     startDate: string;
     endDate: string;
@@ -53,6 +120,11 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  /** Tab lịch: self = lịch user đăng nhập; all = admin xem tất cả (GET không userId). */
+  const [scheduleScope, setScheduleScope] = useState<'self' | 'all'>('self');
+  const [scheduleBrowseAll, setScheduleBrowseAll] = useState<
+    Array<{ userId: string; rows: WeekScheduleRow[]; raw: WeeklySchedule | null }>
+  >([]);
   const [scheduleForm, setScheduleForm] = useState<CreateWeeklyScheduleRequest>({
     userId: '',
     weekStartDate: '',
@@ -95,27 +167,82 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     fetchUserRole();
   }, [user.id, user.role]);
 
-  // Check admin theo roleId
-  const isAdmin = useMemo(() => {
-    return isAdminRoleId(userRoleId);
-  }, [userRoleId]);
-  
-  // Debug log để kiểm tra role
-  useEffect(() => {
-    console.log('TimeAttendance - User role check:', {
-      rawRole: user.role,
-      userRoleId,
-      isAdmin,
-      userObject: user
-    });
-  }, [user.role, userRoleId, isAdmin, user]);
+  // Admin: roleId UUID (env) hoặc tên role (System Admin / HR Manager …) — tránh chỉ nhìn UUID mà bỏ sót user.role
+  const isAdmin = useMemo(() => isAdminUser(userRoleId, user.role), [userRoleId, user.role]);
 
-  // Load danh sách employees khi mở modal
+  /** Chỉ System Admin / Admin (UUID hoặc tên) mới thấy ô tìm/lọc theo nhân viên; HR Manager xem danh sách đầy đủ, không có combobox. */
+  const canFilterLeaveByEmployee = useMemo(() => {
+    if (isAdminRoleId(userRoleId)) return true;
+    const r = String(user.role || '').trim().toLowerCase();
+    return r === 'system admin' || r === 'administrator' || r === 'admin';
+  }, [userRoleId, user.role]);
+
+  /** "Tất cả nhân viên": all / rỗng / chưa chọn → hiện full list (tránh lọc nhầm → list trống). */
+  const isLeaveFilterShowAll = useMemo(() => {
+    const v = String(leaveSelectedUserId ?? '').trim().toLowerCase();
+    return v === '' || v === 'all';
+  }, [leaveSelectedUserId]);
+
+  const leaveFilterEmployeeLabel = useMemo(() => {
+    if (isLeaveFilterShowAll) return 'Tất cả nhân viên';
+    const emp = employees.find((e) => e.id === leaveSelectedUserId);
+    if (!emp) return leaveSelectedUserId;
+    const name =
+      emp.fullName || (emp as { full_name?: string }).full_name || emp.email || 'N/A';
+    return String(name);
+  }, [isLeaveFilterShowAll, leaveSelectedUserId, employees]);
+
+  /** User thường: chỉ đơn của chính họ (lọc thêm phía client nếu API lệch). Admin: theo bộ lọc hoặc tất cả. */
+  const displayedLeaveRequests = useMemo(() => {
+    if (isAdmin) {
+      if (!canFilterLeaveByEmployee || isLeaveFilterShowAll) {
+        return leaveRequests;
+      }
+      return leaveRequests.filter((r) => getLeaveRequestUserId(r) === leaveSelectedUserId);
+    }
+    const mine = leaveRequests.filter((r) => getLeaveRequestUserId(r) === user.id);
+    return mine.length > 0 ? mine : leaveRequests;
+  }, [
+    isAdmin,
+    canFilterLeaveByEmployee,
+    isLeaveFilterShowAll,
+    leaveSelectedUserId,
+    leaveRequests,
+    user.id,
+  ]);
+
+  const displayScheduleBrowseAll = useMemo(() => {
+    if (scheduleBrowseAll.length === 0) return [];
+    return [...scheduleBrowseAll].sort((a, b) => {
+      const nameA = employees.find((e) => e.id === a.userId)?.fullName || a.userId;
+      const nameB = employees.find((e) => e.id === b.userId)?.fullName || b.userId;
+      return String(nameA).localeCompare(String(nameB), 'vi');
+    });
+  }, [scheduleBrowseAll, employees]);
+
   useEffect(() => {
-    if (isCreateScheduleModalOpen && isAdmin) {
+    if (!canFilterLeaveByEmployee) {
+      setLeaveSelectedUserId('all');
+    }
+  }, [canFilterLeaveByEmployee]);
+
+  useEffect(() => {
+    if (!isAdmin && scheduleScope === 'all') {
+      setScheduleScope('self');
+    }
+  }, [isAdmin, scheduleScope]);
+
+  // Chỉ tải danh sách nhân viên khi cần: modal lịch, tab nghỉ + lọc, hoặc admin xem lịch tất cả
+  useEffect(() => {
+    if (
+      isAdmin &&
+      (isCreateScheduleModalOpen ||
+        (activeTab === 'leave' && canFilterLeaveByEmployee) ||
+        (activeTab === 'schedule' && scheduleScope === 'all'))
+    ) {
       loadEmployees();
     }
-  }, [isCreateScheduleModalOpen, isAdmin]);
+  }, [isCreateScheduleModalOpen, isAdmin, activeTab, canFilterLeaveByEmployee, scheduleScope]);
 
   const loadEmployees = async () => {
     setIsLoadingEmployees(true);
@@ -124,6 +251,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       // Flatten department và role objects
       const flattened = data.map((emp: any) => ({
         ...emp,
+        fullName: emp.fullName || emp.full_name || '',
         department:
           emp.department && typeof emp.department === 'object'
             ? emp.department.name
@@ -297,14 +425,12 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       // Nếu admin tạo cho user khác, hiển thị lịch của user đó
       // Nếu user thường hoặc admin tạo cho chính mình, hiển thị lịch của user hiện tại
       try {
-        if (isAdmin && cleanedForm.userId !== user.id) {
-          // Admin tạo cho user khác, set viewingUserId để hiển thị lịch của user đó
-          // useEffect sẽ tự động fetch khi viewingUserId thay đổi
+        if (scheduleScope === 'all' && isAdmin) {
+          await fetchAllSchedulesBrowse();
+        } else if (isAdmin && cleanedForm.userId !== user.id) {
           setViewingUserId(cleanedForm.userId);
         } else {
-          // User thường hoặc admin tạo cho chính mình, refresh lịch của user hiện tại
           setViewingUserId(null);
-          // Gọi trực tiếp để refresh ngay lập tức
           await fetchWeeklyScheduleForUser(user.id);
         }
       } catch (refreshError) {
@@ -373,6 +499,10 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       toast.error('Vui lòng nhập lý do nghỉ');
       return;
     }
+    if (leaveForm.endDate < leaveForm.startDate) {
+      toast.error('Ngày kết thúc phải sau hoặc trùng ngày bắt đầu');
+      return;
+    }
 
     setIsSubmittingLeave(true);
     try {
@@ -424,70 +554,48 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   // State để lưu userId đang xem lịch (cho admin có thể xem lịch của user khác)
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
-  // Fetch lịch làm việc từ API
-  useEffect(() => {
-    if (activeTab === 'schedule') {
-      const targetUserId = viewingUserId || user.id;
-      if (targetUserId) {
-        fetchWeeklyScheduleForUser(targetUserId);
-      }
-    }
-  }, [activeTab, user.id, viewingUserId]);
+  /** Tăng khi hủy fetch (đổi tab / đổi user) — response cũ không cập nhật UI. */
+  const scheduleFetchGenRef = useRef(0);
 
-  const fetchWeeklyScheduleForUser = async (userId: string) => {
+  const fetchWeeklyScheduleForUser = async (userId: string, requestGen?: number) => {
+    const isStale = () =>
+      requestGen != null && requestGen !== scheduleFetchGenRef.current;
+
     setIsLoadingSchedule(true);
     try {
       // Lấy lịch làm việc của user
       const schedules = await weeklyScheduleService.getWeeklySchedules(userId);
-      
+
+      if (isStale()) return;
+
       if (schedules && schedules.length > 0) {
-        // Lấy schedule của tuần hiện tại hoặc gần nhất
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const currentWeekStart = new Date(today);
-        // Tính Monday của tuần hiện tại (0 = Sunday, 1 = Monday, ...)
-        const dayOfWeek = today.getDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Nếu là Sunday (0), cần lùi 6 ngày
-        currentWeekStart.setDate(today.getDate() - daysToMonday);
-        currentWeekStart.setHours(0, 0, 0, 0);
-        
-        // Tìm schedule phù hợp với tuần hiện tại (so sánh ngày, không so sánh giờ)
-        let currentSchedule = schedules.find(s => {
-          const scheduleStart = new Date(s.weekStartDate);
-          scheduleStart.setHours(0, 0, 0, 0);
-          return scheduleStart.getTime() === currentWeekStart.getTime();
-        });
-        
-        // Nếu không tìm thấy, lấy schedule gần nhất (sắp xếp theo weekStartDate giảm dần)
-        if (!currentSchedule && schedules.length > 0) {
-          const sortedSchedules = [...schedules].sort((a, b) => {
-            const dateA = new Date(a.weekStartDate).getTime();
-            const dateB = new Date(b.weekStartDate).getTime();
-            return dateB - dateA; // Mới nhất trước
-          });
-          currentSchedule = sortedSchedules[0];
-        }
-        
+        const currentSchedule = pickCurrentWeekSchedule(schedules);
         if (currentSchedule) {
+          if (isStale()) return;
+          setScheduleBrowseAll([]);
           setCurrentWeeklySchedule(currentSchedule as WeeklySchedule);
-          // Format schedule để hiển thị
           const formattedSchedule = formatScheduleForDisplay(currentSchedule);
           setWeekSchedule(formattedSchedule);
         } else {
+          if (isStale()) return;
           setCurrentWeeklySchedule(null);
           setWeekSchedule([]);
         }
       } else {
+        if (isStale()) return;
         setCurrentWeeklySchedule(null);
         setWeekSchedule([]);
       }
     } catch (error: any) {
       console.error('Error fetching weekly schedule:', error);
+      if (isStale()) return;
       // Nếu lỗi, hiển thị empty state
       setCurrentWeeklySchedule(null);
       setWeekSchedule([]);
     } finally {
-      setIsLoadingSchedule(false);
+      if (!isStale()) {
+        setIsLoadingSchedule(false);
+      }
     }
   };
 
@@ -538,6 +646,74 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       });
   };
 
+  const fetchAllSchedulesBrowse = async (requestGen?: number) => {
+    const isStale = () =>
+      requestGen != null && requestGen !== scheduleFetchGenRef.current;
+
+    setIsLoadingSchedule(true);
+    try {
+      const schedules = await weeklyScheduleService.getWeeklySchedules();
+      if (isStale()) return;
+
+      const byUser = new Map<string, WeeklySchedule[]>();
+      for (const s of schedules) {
+        const uid = s.userId;
+        if (!uid) continue;
+        if (!byUser.has(uid)) byUser.set(uid, []);
+        byUser.get(uid)!.push(s);
+      }
+
+      const blocks: Array<{ userId: string; rows: WeekScheduleRow[]; raw: WeeklySchedule | null }> = [];
+      for (const [uid, userSchedules] of byUser) {
+        const current = pickCurrentWeekSchedule(userSchedules);
+        if (!current) continue;
+        const rows = formatScheduleForDisplay(current);
+        blocks.push({ userId: uid, rows, raw: current });
+      }
+
+      if (isStale()) return;
+
+      setWeekSchedule([]);
+      setCurrentWeeklySchedule(null);
+      setScheduleBrowseAll(blocks);
+    } catch (error: any) {
+      console.error('Error fetching all weekly schedules:', error);
+      if (isStale()) return;
+      toast.error('Không thể tải lịch tất cả nhân viên');
+      setScheduleBrowseAll([]);
+    } finally {
+      if (!isStale()) {
+        setIsLoadingSchedule(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'schedule') return;
+
+    const requestGen = ++scheduleFetchGenRef.current;
+    setIsLoadingSchedule(true);
+
+    const run = async () => {
+      if (isAdmin && scheduleScope === 'all') {
+        await fetchAllSchedulesBrowse(requestGen);
+      } else {
+        const targetUserId = viewingUserId || user.id;
+        if (!targetUserId) {
+          setIsLoadingSchedule(false);
+          return;
+        }
+        await fetchWeeklyScheduleForUser(targetUserId, requestGen);
+      }
+    };
+    void run();
+
+    return () => {
+      scheduleFetchGenRef.current += 1;
+      setIsLoadingSchedule(false);
+    };
+  }, [activeTab, user.id, viewingUserId, scheduleScope, isAdmin]);
+
   const handleCheckIn = () => {
     setCheckInStatus('checking');
     
@@ -583,7 +759,15 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                type="button"
+                onClick={() => {
+                  if (tab.id === 'schedule') {
+                    setIsLoadingSchedule(true);
+                    setScheduleScope('self');
+                    setViewingUserId(null);
+                  }
+                  setActiveTab(tab.id as 'leave' | 'schedule');
+                }}
                 className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-orange-600 text-orange-600'
@@ -651,31 +835,81 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
               </button>
             </div>
 
-            {isAdmin && (
-              <div className="mb-3 flex items-center gap-2">
-                <Label className="text-xs text-gray-500">Lọc theo nhân viên:</Label>
-                <Select
-                  value={leaveSelectedUserId}
-                  onValueChange={(val) => setLeaveSelectedUserId(val as string | 'all')}
-                >
-                  <SelectTrigger className="h-9 w-72 text-sm">
-                    <SelectValue placeholder="Chọn nhân viên" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả nhân viên</SelectItem>
-                    {Array.from(
-                      new Map(
-                        leaveRequests
-                          .filter((req) => (req as any).user?.id)
-                          .map((req) => [(req as any).user.id, (req as any).user]),
-                      ).values(),
-                    ).map((u: any) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {(u.fullName || u.full_name || u.email || 'N/A') as string}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {canFilterLeaveByEmployee && (
+              <div className="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+                <Label className="text-xs text-gray-500 shrink-0">Lọc theo nhân viên:</Label>
+                <Popover modal={false} open={leaveEmployeeFilterOpen} onOpenChange={setLeaveEmployeeFilterOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={leaveEmployeeFilterOpen}
+                      className="h-9 w-full min-w-[280px] max-w-md justify-between font-normal"
+                      aria-busy={isLoadingEmployees}
+                    >
+                      <span className="truncate text-left">
+                        {isLoadingEmployees ? 'Đang tải…' : leaveFilterEmployeeLabel}
+                      </span>
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[280px] max-w-md p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Tìm theo tên, email, mã nhân viên…" />
+                      <CommandList>
+                        <CommandEmpty>Không tìm thấy nhân viên.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            className="flex items-center"
+                            value="tat-ca tat ca all nhan vien"
+                            onSelect={() => {
+                              setLeaveSelectedUserId('all');
+                              setLeaveEmployeeFilterOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4 shrink-0',
+                                isLeaveFilterShowAll ? 'opacity-100' : 'opacity-0',
+                              )}
+                            />
+                            Tất cả nhân viên
+                          </CommandItem>
+                          {employees.map((emp) => {
+                            const display = (emp.fullName ||
+                              (emp as { full_name?: string }).full_name ||
+                              emp.email ||
+                              'N/A') as string;
+                            const searchValue = `${display} ${emp.id} ${emp.email ?? ''}`.trim();
+                            return (
+                              <CommandItem
+                                className="flex items-center gap-1"
+                                key={emp.id}
+                                value={searchValue}
+                                onSelect={() => {
+                                  setLeaveSelectedUserId(emp.id);
+                                  setLeaveEmployeeFilterOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-4 w-4 shrink-0',
+                                    leaveSelectedUserId === emp.id ? 'opacity-100' : 'opacity-0',
+                                  )}
+                                />
+                                <span className="min-w-0 flex-1 truncate">{display}</span>
+                                <span className="ml-2 shrink-0 text-xs text-gray-500 font-mono tabular-nums">
+                                  {emp.id}
+                                </span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
 
@@ -684,18 +918,17 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Đang tải đơn xin nghỉ...
               </div>
-            ) : (() => {
-              const filtered =
-                isAdmin && leaveSelectedUserId !== 'all'
-                  ? leaveRequests.filter((req) => (req as any).user?.id === leaveSelectedUserId)
-                  : leaveRequests;
-
-              return filtered.length > 0 ? (
+            ) : displayedLeaveRequests.length > 0 ? (
                 <div className="space-y-3">
-                  {filtered.map((request) => (
+                  {displayedLeaveRequests.map((request) => (
                     <div key={request.id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
+                          {isAdmin && (
+                            <p className="text-sm font-semibold text-blue-800 mb-2">
+                              Nhân viên: {getLeaveRequestEmployeeLabel(request)}
+                            </p>
+                          )}
                           <div className="flex items-center gap-2 mb-2">
                             <span className="font-medium text-gray-900">
                               {request.type === 'ANNUAL'
@@ -786,8 +1019,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-sm text-gray-500">
                   Chưa có đơn xin nghỉ nào.
                 </div>
-              );
-            })()}
+              )}
           </div>
         </div>
       )}
@@ -869,19 +1101,39 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
 
       {activeTab === 'schedule' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Lịch làm việc tuần này</h3>
-            {isLoadingRole ? (
-              <div className="text-xs text-gray-500 flex items-center gap-2">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Đang kiểm tra quyền...
-              </div>
-            ) : isAdmin ? (
-              <Button onClick={handleOpenCreateScheduleModal} className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Tạo lịch làm việc
-              </Button>
-            ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">Lịch làm việc tuần này</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              {isLoadingRole ? (
+                <div className="text-xs text-gray-500 flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Đang kiểm tra quyền...
+                </div>
+              ) : (
+                <>
+                  {isAdmin && (
+                    <Select
+                      value={scheduleScope}
+                      onValueChange={(v) => setScheduleScope(v as 'self' | 'all')}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder="Phạm vi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="self">Lịch của tôi</SelectItem>
+                        <SelectItem value="all">Tất cả nhân viên</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {isAdmin && (
+                    <Button onClick={handleOpenCreateScheduleModal} className="bg-purple-600 hover:bg-purple-700">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Tạo lịch làm việc
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {isLoadingSchedule ? (
@@ -889,30 +1141,81 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
               <span className="ml-2 text-gray-500">Đang tải lịch làm việc...</span>
             </div>
+          ) : isAdmin && scheduleScope === 'all' ? (
+            displayScheduleBrowseAll.length > 0 ? (
+              <div className="space-y-8">
+                {displayScheduleBrowseAll.map((block) => {
+                  const empLabel =
+                    employees.find((e) => e.id === block.userId)?.fullName || block.userId;
+                  return (
+                    <div key={block.userId} className="space-y-2">
+                      <h4 className="text-sm font-semibold text-gray-800 border-b border-gray-100 pb-2">
+                        {empLabel}
+                      </h4>
+                      <div className="space-y-2">
+                        {block.rows.map((schedule, index) => (
+                          <div
+                            key={index}
+                            className="border-2 rounded-lg p-4 transition-colors border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div
+                                  className={`w-12 text-center ${
+                                    schedule.status === 'today' ? 'text-orange-600 font-bold' : 'text-gray-600'
+                                  }`}
+                                >
+                                  <p className="text-xs">{schedule.day}</p>
+                                  <p className="text-lg font-semibold">{schedule.date}</p>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{schedule.shift}</p>
+                                  {schedule.status === 'today' && (
+                                    <p className="text-xs text-orange-600 font-medium">Hôm nay</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">Chưa có lịch làm việc</p>
+                <p className="text-sm text-gray-500 mt-1">Không có dữ liệu lịch tuần này cho nhân viên nào</p>
+              </div>
+            )
           ) : weekSchedule.length > 0 ? (
-          <div className="space-y-2">
-            {weekSchedule.map((schedule, index) => (
+            <div className="space-y-2">
+              {weekSchedule.map((schedule, index) => (
                 <div
                   key={index}
                   className="border-2 rounded-lg p-4 transition-colors border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50"
                 >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 text-center ${
-                      schedule.status === 'today' ? 'text-orange-600 font-bold' : 'text-gray-600'
-                    }`}>
-                      <p className="text-xs">{schedule.day}</p>
-                      <p className="text-lg font-semibold">{schedule.date}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`w-12 text-center ${
+                          schedule.status === 'today' ? 'text-orange-600 font-bold' : 'text-gray-600'
+                        }`}
+                      >
+                        <p className="text-xs">{schedule.day}</p>
+                        <p className="text-lg font-semibold">{schedule.date}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{schedule.shift}</p>
+                        {schedule.status === 'today' && (
+                          <p className="text-xs text-orange-600 font-medium">Hôm nay</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{schedule.shift}</p>
-                      {schedule.status === 'today' && (
-                        <p className="text-xs text-orange-600 font-medium">Hôm nay</p>
-                      )}
-                    </div>
-                  </div>
                     <div className="flex items-center gap-2">
-                      {isAdmin && (
+                      {isAdmin && scheduleScope === 'self' && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -982,7 +1285,6 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
-                      {/* Removed clock icon per request */}
                     </div>
                   </div>
                 </div>

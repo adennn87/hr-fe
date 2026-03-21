@@ -12,6 +12,8 @@ export interface CreateLeaveRequestPayload {
 export interface LeaveRequest {
   id: string;
   user: any;
+  /** Có khi API trả userId phẳng thay vì object user */
+  userId?: string;
   startDate: string;
   endDate: string;
   type: LeaveType;
@@ -21,9 +23,156 @@ export interface LeaveRequest {
   createdAt: string;
 }
 
+function unwrapLeaveList(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    const inner = o.data ?? o.items ?? o.results ?? o.leaveRequests ?? o.leaves;
+    if (Array.isArray(inner)) return inner;
+  }
+  return [];
+}
+
+function normalizeLeaveStatus(s: unknown): 'PENDING' | 'APPROVED' | 'REJECTED' {
+  const u = String(s ?? '')
+    .trim()
+    .toUpperCase();
+  if (u === 'APPROVED' || u === 'APPROVE') return 'APPROVED';
+  if (u === 'REJECTED' || u === 'REJECT') return 'REJECTED';
+  return 'PENDING';
+}
+
+function normalizeLeaveType(t: unknown): LeaveType {
+  const u = String(t ?? '')
+    .trim()
+    .toUpperCase();
+  if (u === 'ANNUAL' || u === 'ANNUAL_LEAVE') return 'ANNUAL';
+  if (u === 'SICK' || u === 'SICK_LEAVE') return 'SICK';
+  if (u === 'UNPAID') return 'UNPAID';
+  return 'OTHER';
+}
+
+/** Chuẩn hóa một bản ghi đơn nghỉ từ nhiều dạng API. */
+export function normalizeLeaveRequest(raw: unknown): LeaveRequest {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: '',
+      user: {},
+      startDate: '',
+      endDate: '',
+      type: 'OTHER',
+      reason: '',
+      status: 'PENDING',
+      rejectReason: null,
+      createdAt: '',
+    };
+  }
+  const r = raw as Record<string, unknown>;
+  let userObj = r.user ?? r.employee;
+  const uidFlat = r.userId ?? r.user_id;
+  if ((!userObj || typeof userObj !== 'object') && uidFlat) {
+    userObj = {
+      id: String(uidFlat),
+      fullName: r.userName ?? r.user_name ?? r.fullName ?? r.full_name,
+      email: r.email,
+    };
+  }
+  const uidFromUser =
+    userObj && typeof userObj === 'object' && userObj !== null && 'id' in userObj
+      ? String((userObj as { id: unknown }).id)
+      : undefined;
+  const resolvedUserId = uidFlat != null ? String(uidFlat) : uidFromUser;
+
+  return {
+    id: String(r.id ?? ''),
+    user: userObj && typeof userObj === 'object' ? userObj : {},
+    userId: resolvedUserId,
+    startDate: String(r.startDate ?? r.start_date ?? ''),
+    endDate: String(r.endDate ?? r.end_date ?? ''),
+    type: normalizeLeaveType(r.type),
+    reason: String(r.reason ?? ''),
+    status: normalizeLeaveStatus(r.status),
+    rejectReason:
+      r.rejectReason != null
+        ? String(r.rejectReason)
+        : r.reject_reason != null
+          ? String(r.reject_reason)
+          : null,
+    createdAt: String(r.createdAt ?? r.created_at ?? ''),
+  };
+}
+
+export function mapLeaveRequestList(raw: unknown): LeaveRequest[] {
+  return unwrapLeaveList(raw).map((item) => normalizeLeaveRequest(item));
+}
+
+/** Tên hiển thị nhân viên (admin). */
+export function getLeaveRequestEmployeeLabel(req: LeaveRequest): string {
+  const u = req.user;
+  if (u && typeof u === 'object') {
+    const o = u as Record<string, unknown>;
+    const name = o.fullName ?? o.full_name ?? o.name;
+    const email = o.email;
+    if (typeof name === 'string' && name.trim()) return name.trim();
+    if (typeof email === 'string' && email.trim()) return email.trim();
+    if (o.id) return String(o.id);
+  }
+  if (req.userId) return req.userId;
+  return 'Nhân viên';
+}
+
+/** userId để lọc đơn (ưu tiên field phẳng, sau đó nested user). */
+export function getLeaveRequestUserId(req: LeaveRequest): string | undefined {
+  if (req.userId) return req.userId;
+  const u = req.user;
+  if (u && typeof u === 'object' && u !== null && 'id' in u) {
+    const id = (u as { id?: unknown }).id;
+    if (id !== undefined && id !== null) return String(id);
+  }
+  return undefined;
+}
+
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+}
+
+/** Đọc message lỗi từ JSON hoặc text (NestJS/class-validator thường trả message[]). */
+function parseHttpErrorBody(status: number, text: string): string {
+  const fallback = `Lỗi ${status}${text ? `: ${text.slice(0, 280)}` : ''}`;
+  if (!text?.trim()) {
+    return status === 500
+      ? 'Lỗi máy chủ (500). Kiểm tra định dạng dữ liệu gửi lên hoặc log backend.'
+      : fallback;
+  }
+  try {
+    const j = JSON.parse(text) as Record<string, unknown>;
+    const msg = j.message;
+    if (Array.isArray(msg)) return msg.map(String).join('; ');
+    if (typeof msg === 'string' && msg.trim()) return msg;
+    if (typeof j.error === 'string' && j.error.trim()) return j.error;
+    if (typeof j.statusMessage === 'string') return j.statusMessage;
+  } catch {
+    return text.length > 300 ? `${text.slice(0, 300)}…` : text;
+  }
+  return fallback;
+}
+
+/** Các biến thể body POST để tương thích NestJS/DTO (camelCase vs snake_case, tên field type). */
+function buildCreateLeaveBodyVariants(payload: CreateLeaveRequestPayload): Record<string, unknown>[] {
+  const { startDate, endDate, type, reason } = payload;
+
+  const typeLower = String(type).toLowerCase();
+
+  return [
+    { startDate, endDate, type, reason },
+    { start_date: startDate, end_date: endDate, type, reason },
+    { start_date: startDate, end_date: endDate, leave_type: type, reason },
+    { startDate, endDate, leaveType: type, reason },
+    { start_date: startDate, end_date: endDate, leaveType: type, reason },
+    { startDate, endDate, type: typeLower, reason },
+    { start_date: startDate, end_date: endDate, leave_type: typeLower, reason },
+  ];
 }
 
 export const leaveRequestService = {
@@ -31,22 +180,43 @@ export const leaveRequestService = {
     const baseUrl = API_URL.replace('/api', '');
     const token = getAuthToken();
 
-    const response = await fetch(`${baseUrl}/leave-requests`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'accept': '*/*',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: JSON.stringify(payload),
-    });
+    const url = `${baseUrl}/leave-requests`;
+    const bodies = buildCreateLeaveBodyVariants(payload);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
+    let lastMessage = 'Không thể tạo đơn xin nghỉ';
+
+    for (const body of bodies) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: '*/*',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify(body),
+      });
+
+      const text = await response.text();
+
+      if (response.ok) {
+        if (!text?.trim()) {
+          throw new Error('Máy chủ không trả nội dung (200 rỗng)');
+        }
+        try {
+          return normalizeLeaveRequest(JSON.parse(text));
+        } catch {
+          throw new Error('Phản hồi máy chủ không phải JSON hợp lệ');
+        }
+      }
+
+      lastMessage = parseHttpErrorBody(response.status, text);
+
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(lastMessage);
+      }
     }
 
-    return response.json();
+    throw new Error(lastMessage);
   },
 
   async getMyLeaveRequests(): Promise<LeaveRequest[]> {
@@ -66,7 +236,8 @@ export const leaveRequestService = {
       throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
     }
 
-    return response.json();
+    const raw = await response.json();
+    return mapLeaveRequestList(raw);
   },
 
   async getAllLeaveRequests(): Promise<LeaveRequest[]> {
@@ -86,7 +257,8 @@ export const leaveRequestService = {
       throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
     }
 
-    return response.json();
+    const raw = await response.json();
+    return mapLeaveRequestList(raw);
   },
 
   async updateLeaveStatus(
@@ -112,7 +284,8 @@ export const leaveRequestService = {
       throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
     }
 
-    return response.json();
+    const raw = await response.json();
+    return normalizeLeaveRequest(raw);
   },
 };
 

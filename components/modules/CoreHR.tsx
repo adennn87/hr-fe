@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { User as UserType } from '@/lib/auth-types';
 import { employeeService, type Employee } from '@/services/employee.service';
+import { departmentService } from '@/services/department.service';
 import { assetService, type AllocatedAsset } from '@/services/asset.service';
 import { toast } from 'sonner';
 
@@ -80,6 +81,45 @@ export function CoreHR({ user }: CoreHRProps) {
   }, []);
 
   /**
+   * Gộp danh sách phòng ban đầy đủ (GET /departments) với nhóm nhân sự theo phòng ban,
+   * để phòng ban 0 người vẫn hiển thị trên sơ đồ tổ chức.
+   */
+  const mergeDepartmentsWithEmployees = async (
+    grouped: Array<{ department: string; users: Employee[] }>
+  ): Promise<Array<{ department: string; users: Employee[] }>> => {
+    try {
+      const allDepts = await departmentService.getDepartments();
+      if (!allDepts.length) return grouped;
+
+      const byName = new Map<string, Employee[]>();
+      grouped.forEach((g) => {
+        byName.set(g.department, g.users);
+      });
+
+      const masterNames = new Set(allDepts.map((d) => d.name));
+      const merged: Array<{ department: string; users: Employee[] }> = [];
+
+      for (const d of allDepts) {
+        merged.push({
+          department: d.name,
+          users: byName.get(d.name) ?? [],
+        });
+      }
+
+      for (const g of grouped) {
+        if (!masterNames.has(g.department)) {
+          merged.push(g);
+        }
+      }
+
+      return merged;
+    } catch (e) {
+      console.warn('Could not merge with full department list:', e);
+      return grouped;
+    }
+  };
+
+  /**
    * Load dữ liệu tổ chức.
    * Ưu tiên endpoint group-by-department; nếu backend lỗi (500) thì fallback sang getAllEmployees và tự group theo department trên FE.
    */
@@ -89,7 +129,7 @@ export function CoreHR({ user }: CoreHRProps) {
       try {
         // Thử gọi endpoint group-by-department (nếu backend OK sẽ dùng dữ liệu này)
         const data = await employeeService.getEmployeesByDepartment();
-        setDepartmentsData(data);
+        setDepartmentsData(await mergeDepartmentsWithEmployees(data));
         return;
       } catch (err) {
         console.warn('group-by-department API failed, falling back to getAllEmployees():', err);
@@ -117,7 +157,7 @@ export function CoreHR({ user }: CoreHRProps) {
         users,
       }));
 
-      setDepartmentsData(grouped);
+      setDepartmentsData(await mergeDepartmentsWithEmployees(grouped));
     } catch (error: any) {
       console.error('Error building org chart data:', error);
       toast.error('Không thể tải sơ đồ tổ chức', {
