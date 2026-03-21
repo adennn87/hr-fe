@@ -11,7 +11,7 @@ export interface User {
   fullName: string;
   email: string;
   role: Role | string;
-  department: string;
+  department: string | { id: string; name: string };
   location: string;
   avatar: string;
   mfaEnabled: boolean;

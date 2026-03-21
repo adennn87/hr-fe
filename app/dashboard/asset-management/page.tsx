@@ -1,0 +1,695 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Laptop, Plus, Search, Filter, MoreHorizontal,
+  Trash2, Pencil, CheckCircle2, XCircle,
+  ArrowRightLeft, History, Loader2, User,
+  Calendar, FileText, Tag, Hash
+} from 'lucide-react';
+import { assetService, Asset, AllocatedAsset } from '@/services/asset.service';
+import { employeeService, Employee } from '@/services/employee.service';
+import { usePermissions } from '@/lib/use-permissions';
+import { toast } from 'sonner';
+
+export default function AssetManagementPage() {
+  const { hasPermission, isAdmin } = usePermissions();
+  const [activeTab, setActiveTab] = useState<'inventory' | 'allocations'>('allocations');
+  const [isLoading, setIsLoading] = useState(true);
+  const [allocatedAssets, setAllocatedAssets] = useState<any[]>([]);
+  const [inventoryAssets, setInventoryAssets] = useState<Asset[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAllocateModalOpen, setIsAllocateModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [selectedAssetToAllocate, setSelectedAssetToAllocate] = useState<Asset | null>(null);
+
+  const [assetForm, setAssetForm] = useState({
+    name: '',
+    category: 'Laptop',
+    serialNumber: '',
+    assetCode: '',
+    brand: '',
+    model: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    purchasePrice: 0,
+    status: 'AVAILABLE',
+    note: '',
+  });
+
+  const [allocationForm, setAllocationForm] = useState({
+    userId: '',
+    allocatedDate: new Date().toISOString().split('T')[0],
+    note: '',
+  });
+
+  // Utility to open modal for editing
+  const openEditModal = (asset: Asset) => {
+    setEditingAsset(asset);
+    setAssetForm({
+      name: asset.name,
+      category: asset.category,
+      serialNumber: asset.serialNumber,
+      assetCode: asset.assetCode,
+      brand: asset.brand,
+      model: asset.model,
+      purchaseDate: asset.purchaseDate.split('T')[0],
+      purchasePrice: Number(asset.purchasePrice),
+      status: asset.status.toUpperCase(),
+      note: asset.note || '',
+    });
+    setIsModalOpen(true);
+  };
+
+  // Permission checks
+  const canViewAllocations = hasPermission('ASSET_ALLOCATE_VIEW');
+  const canViewInventory = hasPermission('ASSET_VIEW');
+  const canCreateAsset = hasPermission('ASSET_CREATE');
+  const canAllocate = hasPermission('ASSET_ALLOCATE_CREATE');
+
+  useEffect(() => {
+    if (canViewAllocations || canViewInventory) {
+      if (activeTab === 'allocations') {
+        fetchAllocatedAssets();
+      } else {
+        fetchInventoryAssets();
+      }
+    }
+  }, [activeTab, canViewAllocations, canViewInventory, statusFilter]);
+
+  const fetchAllocatedAssets = async () => {
+    setIsLoading(true);
+    try {
+      const data = await assetService.getAllocatedAssets(statusFilter);
+      setAllocatedAssets(data);
+    } catch (error: any) {
+      toast.error('Không thể tải danh sách cấp phát', {
+        description: error.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchInventoryAssets = async () => {
+    setIsLoading(true);
+    try {
+      const data = await assetService.getInventoryAssets();
+      setInventoryAssets(data);
+    } catch (error: any) {
+      toast.error('Không thể tải kho tài sản', {
+        description: error.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...assetForm,
+        purchasePrice: Number(assetForm.purchasePrice)
+      };
+
+      if (editingAsset) {
+        await assetService.updateAsset(editingAsset.id, payload);
+        toast.success('Cập nhật tài sản thành công');
+      } else {
+        await assetService.createAsset(payload);
+        toast.success('Tạo tài sản thành công');
+      }
+
+      setIsModalOpen(false);
+      setEditingAsset(null);
+      setAssetForm({
+        name: '',
+        category: 'Laptop',
+        serialNumber: '',
+        assetCode: '',
+        brand: '',
+        model: '',
+        purchaseDate: new Date().toISOString().split('T')[0],
+        purchasePrice: 0,
+        status: 'AVAILABLE',
+        note: '',
+      });
+      activeTab === 'allocations' ? fetchAllocatedAssets() : fetchInventoryAssets();
+    } catch (error: any) {
+      toast.error(editingAsset ? 'Lỗi khi cập nhật tài sản' : 'Lỗi khi tạo tài sản', {
+        description: error.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const data = await employeeService.getAllEmployees();
+      setEmployees(data);
+    } catch (error: any) {
+      toast.error('Không thể tải danh sách nhân viên');
+    }
+  };
+
+  const openAllocateModal = (asset: Asset) => {
+    setSelectedAssetToAllocate(asset);
+    setAllocationForm({
+      userId: '',
+      allocatedDate: new Date().toISOString().split('T')[0],
+      note: `Bàn giao tài sản ${asset.name} cho nhân viên sử dụng`,
+    });
+    fetchEmployees();
+    setIsAllocateModalOpen(true);
+  };
+
+  const handleAllocateAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAssetToAllocate) return;
+
+    setIsSubmitting(true);
+    try {
+      await assetService.allocateAsset({
+        ...allocationForm,
+        assetId: selectedAssetToAllocate.id,
+      });
+      toast.success('Cấp phát tài sản thành công');
+      setIsAllocateModalOpen(false);
+      fetchInventoryAssets();
+    } catch (error: any) {
+      toast.error('Lỗi khi cấp phát tài sản', {
+        description: error.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReturnAsset = async (allocationId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn thu hồi tài sản này không?')) return;
+
+    setIsLoading(true);
+    try {
+      await assetService.returnAsset(allocationId);
+      toast.success('Thu hồi tài sản thành công');
+      fetchAllocatedAssets();
+    } catch (error: any) {
+      toast.error('Lỗi khi thu hồi tài sản', {
+        description: error.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!canViewAllocations && !canViewInventory && !isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
+          <XCircle className="w-10 h-10 text-red-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900">Từ chối truy cập</h2>
+        <p className="text-slate-500 max-w-md">Bạn không có quyền quản lý tài sản. Vui lòng liên hệ Admin để được cấp quyền.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-200">
+            <Laptop className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quản lý Tài sản</h2>
+            <p className="text-slate-500 font-medium text-sm flex items-center gap-1.5">
+              Hệ thống quản lý kho & cấp phát thiết bị
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm tài sản, nhân viên..."
+              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-64 transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {canCreateAsset && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm tài sản
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('allocations')}
+          className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'allocations' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Đang cấp phát
+        </button>
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'inventory' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Kho tài sản
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="min-h-[400px]">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            <p className="text-slate-500 font-medium">Đang tải dữ liệu...</p>
+          </div>
+        ) : activeTab === 'allocations' ? (
+          <div className="grid gap-6">
+            {allocatedAssets.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ArrowRightLeft className="w-10 h-10 text-slate-300" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Chưa có dữ liệu cấp phát</h3>
+                <p className="text-slate-500 mt-2">Bắt đầu cấp phát tài sản cho nhân viên.</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Nhân viên</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Tài sản</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Ngày cấp</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {allocatedAssets.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-100">
+                              {item.user?.fullName?.charAt(0) || 'U'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 text-sm">{item.user?.fullName}</div>
+                              <div className="text-[10px] text-slate-400 font-medium">{item.user?.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                              <Laptop className="w-3.5 h-3.5 text-slate-400" />
+                              {item.asset?.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-medium">{item.asset?.assetCode} • {item.asset?.category}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {item.allocatedDate ? new Intl.DateTimeFormat('vi-VN').format(new Date(item.allocatedDate)) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${item.status === 'allocated' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-50 text-slate-500 border border-slate-100'
+                            }`}>
+                            {item.status === 'allocated' ? 'Đã cấp phát' : 'Đã thu hồi'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all">
+                              <History className="w-4 h-4" />
+                            </button>
+                            {hasPermission('ASSET_ALLOCATE_UPDATE') && item.status === 'allocated' && (
+                              <button
+                                onClick={() => handleReturnAsset(item.id)}
+                                title="Thu hồi tài sản"
+                                className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-amber-600 transition-all"
+                              >
+                                <ArrowRightLeft className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {inventoryAssets.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Tag className="w-10 h-10 text-slate-300" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Kho tài sản trống</h3>
+                <p className="text-slate-500 mt-2">Chưa có tài sản nào trong kho.</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Tài sản</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Thông tin</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Giá mua</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {inventoryAssets.map((asset) => (
+                      <tr key={asset.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+                              <Laptop className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 text-sm">{asset.name}</div>
+                              <div className="text-[10px] text-slate-400 font-medium">{asset.assetCode}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-bold text-slate-600">
+                            {asset.brand} • {asset.model}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-medium">SN: {asset.serialNumber}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-700">
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(asset.purchasePrice))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${asset.status.toLowerCase() === 'available'
+                              ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                              : asset.status.toLowerCase() === 'allocated'
+                                ? 'bg-green-50 text-green-600 border border-green-100'
+                                : 'bg-slate-50 text-slate-500 border border-slate-100'
+                            }`}>
+                            {asset.status.toLowerCase() === 'available' ? 'Sẵn sàng' : asset.status.toLowerCase() === 'allocated' ? 'Đã cấp phát' : asset.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {canAllocate && asset.status.toLowerCase() === 'available' && (
+                              <button
+                                onClick={() => openAllocateModal(asset)}
+                                title="Cấp phát"
+                                className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-green-600 transition-all"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasPermission('ASSET_UPDATE') && (
+                              <button
+                                onClick={() => openEditModal(asset)}
+                                className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasPermission('ASSET_DELETE') && (
+                              <button className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-red-600 transition-all">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {/* Add Asset Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                  <Plus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">{editingAsset ? 'Cập nhật tài sản' : 'Thêm tài sản mới'}</h3>
+                  <p className="text-slate-500 text-xs font-medium">{editingAsset ? 'Chỉnh sửa thông tin thiết bị' : 'Nhập thông tin chi tiết của thiết bị'}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingAsset(null);
+                  setAssetForm({
+                    name: '',
+                    category: 'Laptop',
+                    serialNumber: '',
+                    assetCode: '',
+                    brand: '',
+                    model: '',
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    purchasePrice: 0,
+                    status: 'AVAILABLE',
+                    note: '',
+                  });
+                }}
+                className="p-2 hover:bg-white rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAsset} className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tên tài sản</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="VD: Laptop Dell Latitude 5440"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.name}
+                    onChange={e => setAssetForm({ ...assetForm, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Loại tài sản</label>
+                  <select
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.category}
+                    onChange={e => setAssetForm({ ...assetForm, category: e.target.value })}
+                  >
+                    <option value="Laptop">Laptop</option>
+                    <option value="PC">PC</option>
+                    <option value="Monitor">Màn hình</option>
+                    <option value="Mouse">Chuột</option>
+                    <option value="Keyboard">Bàn phím</option>
+                    <option value="Other">Khác</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Số Serial</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="VD: DL5440SN001"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.serialNumber}
+                    onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mã tài sản</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="VD: TS0001"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.assetCode}
+                    onChange={e => setAssetForm({ ...assetForm, assetCode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Thương hiệu</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="VD: Dell"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.brand}
+                    onChange={e => setAssetForm({ ...assetForm, brand: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Model</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="VD: Latitude 5440"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.model}
+                    onChange={e => setAssetForm({ ...assetForm, model: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ngày mua</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.purchaseDate}
+                    onChange={e => setAssetForm({ ...assetForm, purchaseDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Giá mua (VNĐ)</label>
+                  <input
+                    type="number"
+                    placeholder="VD: 25000000"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                    value={assetForm.purchasePrice}
+                    onChange={e => setAssetForm({ ...assetForm, purchasePrice: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ghi chú</label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium resize-none"
+                  value={assetForm.note}
+                  onChange={e => setAssetForm({ ...assetForm, note: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-50">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-50 transition-all"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {editingAsset ? 'Cập nhật' : 'Lưu tài sản'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Allocate Asset Modal */}
+      {isAllocateModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-100">
+                  <ArrowRightLeft className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Cấp phát tài sản</h3>
+                  <p className="text-slate-500 text-xs font-medium">{selectedAssetToAllocate?.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsAllocateModalOpen(false)} className="p-2 hover:bg-white rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAllocateAsset} className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nhân viên nhận</label>
+                <select
+                  required
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                  value={allocationForm.userId}
+                  onChange={e => setAllocationForm({ ...allocationForm, userId: e.target.value })}
+                >
+                  <option value="">Chọn nhân viên...</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.position || 'N/A'})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ngày cấp phát</label>
+                <input
+                  type="date"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                  value={allocationForm.allocatedDate}
+                  onChange={e => setAllocationForm({ ...allocationForm, allocatedDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ghi chú cấp phát</label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium resize-none"
+                  value={allocationForm.note}
+                  onChange={e => setAllocationForm({ ...allocationForm, note: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-50">
+                <button
+                  type="button"
+                  onClick={() => setIsAllocateModalOpen(false)}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-50 transition-all"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !allocationForm.userId}
+                  className="flex items-center gap-2 bg-green-600 text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-green-100 hover:bg-green-700 transition-all disabled:opacity-50"
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Cấp phát ngay
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

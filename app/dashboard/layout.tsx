@@ -6,15 +6,19 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { SecurityContext } from '@/components/SecurityContext';
 import { DEFAULT_SECURITY_CONTEXT } from '@/lib/auth-types';
 import { GUEST_USER, useStoredUser } from '@/lib/use-stored-user';
-
-import { isAdminRoleName } from '@/lib/role-utils';
+import { usePermissions } from '@/lib/use-permissions';
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan' },
-  { href: '/dashboard/rbac', label: 'Vai trò', requiredPermission: 'View Roles' },
-  { href: '/dashboard/employees', label: 'Nhân sự', requiredPermission: 'View Users' },
-  { href: '/dashboard/attendance', label: 'Lịch làm việc', requiredPermission: 'View Weekly Schedule' },
-  { href: '/dashboard/payroll', label: 'Lương thưởng' }, // No specific permission mentioned for payroll in the response but can be added later
+  { href: '/dashboard/employees', label: 'Nhân sự', module: 'USER' },
+  { href: '/dashboard/rbac', label: 'Vai trò', module: 'ROLE' },
+  { href: '/dashboard/attendance', label: 'Lịch làm việc', module: 'WEEKLY_SCHEDULE' },
+  { href: '/dashboard/timekeeping', label: 'Chấm công', module: 'TIMEKEEPING' },
+  { href: '/dashboard/departments', label: 'Phòng ban', module: 'DEPARTMENT' },
+  { href: '/dashboard/assets', label: 'Tài sản', module: 'ASSET' },
+  { href: '/dashboard/asset-management', label: 'Quản lý cấp phát', module: 'ASSET_ALLOCATE' },
+  { href: '/dashboard/leave-requests', label: 'Nghỉ phép', module: 'LEAVE_REQUEST' },
+  { href: '/dashboard/payroll', label: 'Lương thưởng', module: 'PAYROLL' },
 ];
 
 
@@ -22,11 +26,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const user = useStoredUser();
+  const { hasModuleAccess } = usePermissions();
 
   const filteredNavItems = navItems.filter(item => {
-    if (isAdminRoleName(user.role)) return true;
-    if (!item.requiredPermission) return true;
-    return user.permissions?.includes(item.requiredPermission);
+    if (!item.module) return true;
+    return hasModuleAccess(item.module);
   });
 
   useEffect(() => {

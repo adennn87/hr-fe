@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 interface CoreHRProps {
   user: UserType;
+  defaultTab?: CoreHRTab;
 }
 
 type CoreHRTab = 'orgchart' | 'profile' | 'assets';
@@ -55,8 +56,8 @@ const defaultEmployeeForm: EmployeeFormData = {
 };
 
 
-export function CoreHR({ user }: CoreHRProps) {
-  const [activeTab, setActiveTab] = useState<CoreHRTab>('orgchart');
+export function CoreHR({ user, defaultTab }: CoreHRProps) {
+  const [activeTab, setActiveTab] = useState<CoreHRTab>(defaultTab || 'orgchart');
   const [showSensitiveData, setShowSensitiveData] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -988,7 +989,9 @@ export function CoreHR({ user }: CoreHRProps) {
                   </div>
                   <div>
                     <h3 className="text-3xl font-black text-slate-900">{user.fullName || user.email || 'N/A'}</h3>
-                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">{user.role || 'N/A'} • {user.department || 'N/A'}</p>
+                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">
+                      {typeof user.role === 'object' ? user.role.name : (user.role || 'N/A')} • {typeof user.department === 'object' ? user.department.name : (user.department || 'N/A')}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
