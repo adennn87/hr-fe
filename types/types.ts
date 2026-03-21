@@ -6,15 +6,18 @@ export enum Gender {
   OTHER = 'other'
 }
 
+import { Role } from '@/lib/auth-types';
+
 export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
-  role: string;
+  role: Role | string;
   department: string;
   location: string;
   avatar: string;
   mfaEnabled: boolean;
+  permissions: string[];
 }
 
 

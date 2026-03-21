@@ -7,12 +7,14 @@ import { SecurityContext } from '@/components/SecurityContext';
 import { DEFAULT_SECURITY_CONTEXT } from '@/lib/auth-types';
 import { GUEST_USER, useStoredUser } from '@/lib/use-stored-user';
 
+import { isAdminRoleName } from '@/lib/role-utils';
+
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan' },
-  { href: '/dashboard/rbac', label: 'Vai trò' },
-  { href: '/dashboard/employees', label: 'Nhân sự' },
-  { href: '/dashboard/attendance', label: 'Lịch làm việc' },
-  { href: '/dashboard/payroll', label: 'Lương thưởng' },
+  { href: '/dashboard/rbac', label: 'Vai trò', requiredPermission: 'View Roles' },
+  { href: '/dashboard/employees', label: 'Nhân sự', requiredPermission: 'View Users' },
+  { href: '/dashboard/attendance', label: 'Lịch làm việc', requiredPermission: 'View Weekly Schedule' },
+  { href: '/dashboard/payroll', label: 'Lương thưởng' }, // No specific permission mentioned for payroll in the response but can be added later
 ];
 
 
@@ -20,6 +22,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const user = useStoredUser();
+
+  const filteredNavItems = navItems.filter(item => {
+    if (isAdminRoleName(user.role)) return true;
+    if (!item.requiredPermission) return true;
+    return user.permissions?.includes(item.requiredPermission);
+  });
 
   useEffect(() => {
     if (user === GUEST_USER) {
@@ -31,11 +39,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // Xóa localStorage
     localStorage.removeItem('user');
     localStorage.removeItem('accessToken');
-    
+
     // Xóa sessionStorage
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('accessToken');
-    
+
     // Xóa cookie
     document.cookie = 'access_token=; path=/; max-age=0';
     router.push('/login');
@@ -46,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <SecurityContext context={DEFAULT_SECURITY_CONTEXT} user={user} onLogout={onLogout} />
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
         <nav className="mb-6 flex flex-wrap gap-2">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link

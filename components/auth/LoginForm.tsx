@@ -108,21 +108,6 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
     await handleLogin(data);
   };
 
-  const handleQuickDemoLogin = async () => {
-    const demoCredentials = {
-      email: 'admin@hr.com.vn',
-      password: 'Admin@123',
-    };
-
-    form.setValue('email', demoCredentials.email);
-    form.setValue('password', demoCredentials.password);
-    form.clearErrors();
-
-    await handleLogin(demoCredentials);
-  };
-
-  void handleQuickDemoLogin; // unused but kept for future use
-
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
@@ -183,7 +168,7 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
             )}
           />
 
-                    <Button type="submit" disabled={isLoading} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-base font-semibold shadow-lg shadow-blue-100">
+          <Button type="submit" disabled={isLoading} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-base font-semibold shadow-lg shadow-blue-100">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...

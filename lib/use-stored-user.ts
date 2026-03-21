@@ -12,6 +12,7 @@ export const GUEST_USER: User = {
   location: 'Hanoi',
   avatar: '',
   mfaEnabled: false,
+  permissions: [],
 };
 
 let cachedRawUser: string | null | undefined;
@@ -31,6 +32,7 @@ const normalizeStoredUser = (rawUser: any): User => {
     avatar: rawUser?.avatar || '',
     mfaEnabled: Boolean(rawUser?.mfaEnabled),
     taxCode: rawUser?.taxCode,
+    permissions: Array.isArray(rawUser?.permissions) ? rawUser.permissions : [],
   };
 };
 
