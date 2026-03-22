@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings, ChevronDown, Check } from 'lucide-react';
+import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings, ChevronDown, Check, Loader2 } from 'lucide-react';
 import { User } from '@/lib/auth-types';
 import { employeeService, type Employee } from '@/services/employee.service';
 import { payrollService, type PayrollDetail, type PayrollMonthRow } from '@/services/payroll.service';
@@ -72,10 +72,10 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     fetchUserRole();
   }, [user.role]);
 
-  // Check admin theo roleId
+  // Check admin theo roleId or roleName
   const isAdmin = useMemo(() => {
-    return isAdminRoleId(userRoleId);
-  }, [userRoleId]);
+    return isAdminRoleId(userRoleId) || (user?.role && typeof user.role === 'string' && ['admin', 'system admin', 'hr manager'].includes(user.role.toLowerCase()));
+  }, [userRoleId, user.role]);
 
   // Load employees cho dropdown khi admin vào tab salary
   useEffect(() => {
@@ -169,9 +169,48 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     loadMonthRows();
   }, [isAdmin, activeTab, selectedMonth]);
 
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  const handleCalculatePayroll = async () => {
+    setIsCalculating(true);
+    try {
+      await payrollService.calculatePayroll(selectedMonth);
+      toast.success(`Đã yêu cầu tính toán bảng lương tổng thể`, {
+        description: 'Dữ liệu đang được khởi tạo, vui lòng đợi trong giây lát.'
+      });
+      // Đợi 1 chút rồi load lại
+      setTimeout(async () => {
+        const rows = await payrollService.getPayrollByMonth(selectedMonth);
+        setMonthRows(rows || []);
+        if (selectedEmployeeId !== 'me' || !isAdmin) {
+          const targetUserId = selectedEmployeeId === 'me' ? user.id : selectedEmployeeId;
+          const data = await payrollService.getPayrollByUserId(targetUserId, selectedMonth);
+          setPayroll(data);
+        }
+      }, 2000);
+    } catch (error: any) {
+      toast.error('Lỗi khi tính lương', {
+        description: error.message || 'Vui lòng thử lại sau',
+      });
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const isPayrollDataMissing = useMemo(() => {
+    if (isAdmin && monthRows.length > 0) {
+      // Check if any row has null values (based on user request)
+      return monthRows.some((row: any) => row.workingDays === null || row.baseSalary === null);
+    }
+    if (payroll) {
+        return payroll.workingDays === null || payroll.baseSalary === null;
+    }
+    return false;
+  }, [isAdmin, monthRows, payroll]);
+
   const salaryData = useMemo(() => {
     // Nếu đã có payroll từ API thì dùng, không thì fallback mock
-    if (payroll) {
+    if (payroll && payroll.workingDays !== null) {
       const adjustments = payroll.adjustments || [];
       const add = adjustments
         .filter((a) => (a.category || a.type) === 'ADD')
@@ -200,23 +239,33 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         workingDays: payroll.workingDays,
         leaveDays: payroll.leaveDays,
         salaryPerDay: payroll.salaryPerDay,
+        isCalculated: true
       };
     }
 
     return {
-      baseSalary: 25000000,
-      allowances: 5000000,
-      bonuses: 3000000,
-      totalGross: 33000000,
-      insurance: 3300000,
-      tax: 2970000,
-      totalDeductions: 6270000,
-      netSalary: 26730000,
-      workingDays: null as number | null,
-      leaveDays: null as number | null,
-      salaryPerDay: null as number | null,
+      baseSalary: 0,
+      allowances: 0,
+      bonuses: 0,
+      totalGross: 0,
+      insurance: 0,
+      tax: 0,
+      totalDeductions: 0,
+      netSalary: 0,
+      workingDays: 0,
+      leaveDays: 0,
+      salaryPerDay: 0,
+      isCalculated: false
     };
   }, [payroll]);
+
+  const formatCurrency = (amount: number) => {
+    if (amount === 0 || isNaN(amount)) return '---';
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+    }).format(amount);
+  };
 
   // Mock payslips
   const payslips = [
@@ -265,13 +314,6 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       setRequireStepUp(false);
       alert('Phiếu lương đã được tải về (được mã hóa bằng mật khẩu riêng)');
     }, 1000);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
   };
 
   return (
@@ -339,13 +381,14 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           </h3>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-            <div className="text-sm text-gray-600 min-h-9 flex items-center">
-              {isLoadingPayroll ? 'Đang tải dữ liệu lương...' : payroll ? `Tháng ${payroll.month}` : null}
+            <div className="text-sm text-gray-600 min-h-9 flex items-center italic">
+              {isLoadingPayroll ? 'Đang tải dữ liệu lương...' : payroll ? `Dữ liệu tháng ${payroll.month}` : 'Chọn tháng để xem dữ liệu'}
             </div>
+            
             <div className="flex flex-wrap items-end gap-3">
               {isAdmin && (
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-gray-500">Nhân viên</Label>
+                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Nhân viên</Label>
                   {isLoadingEmployees ? (
                     <div className="text-xs text-gray-500 h-9 flex items-center px-1">Đang tải...</div>
                   ) : (
@@ -360,9 +403,9 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                           variant="outline"
                           role="combobox"
                           aria-expanded={payrollEmployeeSelectOpen}
-                          className="h-9 w-[11.5rem] sm:w-48 justify-between font-normal text-sm px-2.5"
+                          className="h-9 w-[11.5rem] sm:w-64 justify-between font-normal text-sm px-2.5 bg-white border-slate-200 hover:border-indigo-500 transition-all rounded-lg"
                         >
-                          <span className="truncate text-left">{payrollEmployeeSelectLabel}</span>
+                          <span className="truncate text-left font-medium text-slate-700">{payrollEmployeeSelectLabel}</span>
                           <ChevronDown className="ml-1.5 h-3.5 w-3.5 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -397,7 +440,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                                 return (
                                   <CommandItem
                                     key={emp.id}
-                                    className="flex items-center gap-1 text-sm"
+                                    className="flex items-center gap-1 text-sm cursor-pointer"
                                     value={emp.id}
                                     keywords={[label, sub ?? '', emp.email ?? '', emp.phoneNumber ?? ''].filter(
                                       Boolean,
@@ -416,7 +459,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                                     <span className="min-w-0 flex-1 truncate">
                                       {label}
                                       {sub ? (
-                                        <span className="text-muted-foreground font-normal"> · {sub}</span>
+                                        <span className="text-muted-foreground font-normal italic"> · {sub}</span>
                                       ) : null}
                                     </span>
                                   </CommandItem>
@@ -430,30 +473,135 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                   )}
                 </div>
               )}
+              
               <div className="flex flex-col gap-1">
-                <Label className="text-xs text-gray-500">Tháng</Label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="h-9 w-28 text-sm">
-                    <SelectValue placeholder="Tháng" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }).map((_, i) => {
-                      const m = String(i + 1);
-                      return (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tháng</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="h-9 w-24 text-sm bg-white border-slate-200 hover:border-indigo-500 rounded-lg">
+                      <SelectValue placeholder="Tháng" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const m = String(i + 1);
+                        return (
+                          <SelectItem key={m} value={m}>
+                            Tháng {m}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+
+                  {isAdmin && isPayrollDataMissing && (
+                    <Button 
+                      onClick={handleCalculatePayroll} 
+                      disabled={isCalculating}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 text-xs font-bold gap-2 rounded-lg shadow-sm"
+                    >
+                      {isCalculating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
+                      Tính lương tháng {selectedMonth}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
+          {isAdmin && isPayrollDataMissing && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in duration-300">
+              <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-bold text-amber-900">Chưa có dữ liệu lương chi tiết</h4>
+                <p className="text-xs text-amber-700 mt-1">
+                  Hệ thống ghi nhận một số nhân viên chưa được tính lương trong tháng {selectedMonth}. 
+                  Vui lòng bấm <strong>"Tính lương tháng {selectedMonth}"</strong> để bắt đầu quá trình tính toán tự động dựa trên ngày công và nghỉ phép.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Admin: Bảng tổng hợp lương tháng */}
+          {isAdmin && monthRows.length > 0 && (
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm mb-6">
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-500" />
+                  Bảng tổng hợp lương tháng {selectedMonth}
+                </h4>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">
+                  {monthRows.length} bản ghi
+                </span>
+              </div>
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-slate-50/80 backdrop-blur-sm">
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhân viên</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ngày công</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Lương cơ bản</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thực nhận</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {monthRows.map((row: any) => (
+                      <tr 
+                        key={row.payrollId || row.user.id} 
+                        className={`hover:bg-slate-50 transition-colors ${selectedEmployeeId === row.user.id ? 'bg-indigo-50/50' : ''}`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-slate-900">{row.user.name}</span>
+                            <span className="text-[11px] text-slate-500">{row.user.department || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`text-sm font-medium ${row.workingDays === null ? 'text-slate-300 italic' : 'text-slate-700'}`}>
+                            {row.workingDays ?? 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`text-sm font-medium ${row.baseSalary === null ? 'text-slate-300 italic' : 'text-slate-700'}`}>
+                            {formatCurrency(Number(row.baseSalary))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm font-bold text-indigo-600">
+                            {formatCurrency(Number(row.finalSalary))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button 
+                            onClick={() => setSelectedEmployeeId(row.user.id)}
+                            className={`text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all ${
+                              selectedEmployeeId === row.user.id 
+                                ? 'bg-indigo-600 text-white border-transparent shadow-lg shadow-indigo-100' 
+                                : 'bg-white text-indigo-600 border-slate-200 hover:border-indigo-600'
+                            }`}
+                          >
+                            {selectedEmployeeId === row.user.id ? 'Đang xem' : 'Chi tiết'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {isAdmin && selectedEmployeeId !== 'me' && selectedEmployee && (
-            <div className="text-sm text-gray-600">
-              Đang xem lương của: <span className="font-medium text-gray-900">{selectedEmployee.fullName || selectedEmployee.email}</span>
+            <div className="flex items-center justify-between mb-4 animate-in slide-in-from-left duration-300">
+              <div className="text-sm text-slate-600">
+                Đang xem chi tiết lương của: <span className="font-bold text-slate-900 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">{selectedEmployee.fullName || selectedEmployee.email}</span>
+              </div>
+              <button 
+                onClick={() => setSelectedEmployeeId('me')}
+                className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors"
+              >
+                Hủy xem chi tiết
+              </button>
             </div>
           )}
 
