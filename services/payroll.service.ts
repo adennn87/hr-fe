@@ -318,8 +318,6 @@ export const payrollService = {
       `${baseUrl}/payrolls/user?userId=${encodeURIComponent(userId)}&month=${encodeURIComponent(m)}`,
       `${baseUrl}/payroll/user/${encodeURIComponent(userId)}?month=${encodeURIComponent(m)}`,
       `${baseUrl}/users/${encodeURIComponent(userId)}/payroll?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/salary/user?userId=${encodeURIComponent(userId)}&month=${encodeURIComponent(m)}`,
-      `${baseUrl}/salaries/user?userId=${encodeURIComponent(userId)}&month=${encodeURIComponent(m)}`,
     ];
 
     let lastErr: unknown = null;
@@ -348,69 +346,66 @@ export const payrollService = {
 
   /**
    * Lấy bảng lương theo tháng (tất cả user) cho admin.
-   * Trả về list row có user + finalSalary để dùng cho dropdown search.
    */
   async getPayrollByMonth(month: string | number): Promise<PayrollMonthRow[]> {
     const baseUrl = API_URL.replace('/api', '');
     const m = String(month);
 
     const candidates = [
-      // Most likely (based on provided response)
+      `${baseUrl}/payroll/month?month=${encodeURIComponent(m)}`,
       `${baseUrl}/payrolls?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/payrolls`,
       `${baseUrl}/payroll?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/payroll?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/salaries?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/payroll/month/${encodeURIComponent(m)}`,
-      `${baseUrl}/payrolls/month/${encodeURIComponent(m)}`,
-      `${baseUrl}/payrolls/month?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/payrolls/list?month=${encodeURIComponent(m)}`,
-      `${baseUrl}/salary/month/${encodeURIComponent(m)}`,
-      `${baseUrl}/salaries/month/${encodeURIComponent(m)}`,
     ];
 
     let lastErr: any = null;
     for (const url of candidates) {
       try {
         const result = await tryGet<any>(url);
-        console.log('✅ Payroll Month API succeeded:', { url, month: m });
-
-        // Backend có thể trả về array PayrollDetail hoặc payload wrapper
         const list: any[] = Array.isArray(result) ? result : (result?.data || result?.items || []);
 
-        // Nếu endpoint không hỗ trợ filter month và trả về list nhiều tháng, filter lại theo month request
-        const filtered = list.filter((row: any) => String(row.month ?? '').includes(m));
-
-        return (filtered.length > 0 ? filtered : list).map((row: any) => {
+        return list.map((row: any) => {
           const detail = normalizePayrollDetail(row);
           return {
             payrollId: row.payrollId ?? row.id ?? row.payroll_id,
-            month: String(row.month ?? row.monthNumber ?? m),
+            month: String(row.month ?? m),
             user: detail.user,
             finalSalary: detail.finalSalary,
-          } as PayrollMonthRow;
+            // Thêm các field thô để UI check null
+            workingDays: row.workingDays,
+            baseSalary: row.baseSalary,
+          } as any;
         });
       } catch (e: any) {
         lastErr = e;
-        const status = e?.status;
-        console.warn('⚠️ Payroll Month API candidate failed:', {
-          url,
-          status,
-          responseText: e?.responseText?.slice?.(0, 200),
-        });
-        if (status === 404 || status === 500) continue;
+        if (e?.status === 404) continue;
         throw e;
       }
     }
-
-    // Nếu tất cả candidates đều 404/500 => backend chưa expose list theo tháng.
-    // Trả về [] để UI fallback sang dropdown nhân viên (và vẫn gọi chi tiết theo userId).
-    console.warn('Payroll Month API: no candidate endpoint succeeded', {
-      month: m,
-      lastStatus: lastErr?.status,
-      lastResponseText: lastErr?.responseText?.slice?.(0, 200),
-    });
     return [];
+  },
+
+  /**
+   * Tính lương cho tất cả nhân viên trong tháng.
+   * Sử dụng endpoint mới: POST /payroll/generate
+   */
+  async calculatePayroll(month: string | number): Promise<void> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = getAuthToken();
+    
+    // Thêm query month nếu backend cần, nhưng curl của user không có.
+    // Thử gọi /payroll/generate trực tiếp.
+    const response = await fetch(`${baseUrl}/payroll/generate`, {
+      method: 'POST',
+      headers: {
+        'accept': '*/*',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Không thể tính lương');
+    }
   },
 };
 
