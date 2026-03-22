@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Loader2, ArrowRight, Eye, EyeOff, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '@/services/auth.service';
+import { RecaptchaWidget, type RecaptchaHandle } from '@/components/auth/RecaptchaWidget';
+import { requireRecaptchaToken } from '@/lib/recaptcha-config';
 // import { departmentService, Department } from '@/services/department.service';
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,7 @@ interface LoginFormProps {
 export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, onRegister }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
   // const [departments, setDepartments] = useState<Department[]>([]);
   // const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   // const [departmentsLoading, setDepartmentsLoading] = useState(true);
@@ -75,6 +78,12 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
   const handleLogin = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
+      const rc = requireRecaptchaToken(() => recaptchaRef.current?.getToken() ?? null);
+      if (rc === null) {
+        setIsLoading(false);
+        return;
+      }
+
       // Lưu email, password và department vào sessionStorage để dùng sau khi verify OTP
       sessionStorage.setItem('pendingLoginEmail', data.email);
       sessionStorage.setItem('pendingLoginPassword', data.password);
@@ -83,7 +92,7 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
       // }
 
       // Gọi API loginOtp để gửi OTP
-      await authService.loginOtp(data.email, data.password);
+      await authService.loginOtp(data.email, data.password, rc);
 
       setIdentifier(data.email);
 
@@ -92,6 +101,7 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
       onSuccess(); // Chuyển sang form MFA
 
     } catch (error: unknown) {
+      recaptchaRef.current?.reset();
       // Xóa pending credentials nếu lỗi
       sessionStorage.removeItem('pendingLoginEmail');
       sessionStorage.removeItem('pendingLoginPassword');
@@ -167,6 +177,8 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
               </FormItem>
             )}
           />
+
+          <RecaptchaWidget ref={recaptchaRef} className="pt-1" />
 
           <Button type="submit" disabled={isLoading} className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-base font-semibold shadow-lg shadow-blue-100">
             {isLoading ? (

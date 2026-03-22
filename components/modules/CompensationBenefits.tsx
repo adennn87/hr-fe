@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings } from 'lucide-react';
+import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings, ChevronDown, Check } from 'lucide-react';
 import { User } from '@/lib/auth-types';
 import { employeeService, type Employee } from '@/services/employee.service';
 import { payrollService, type PayrollDetail, type PayrollMonthRow } from '@/services/payroll.service';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/components/ui/utils';
+import { getEmployeeDisplayLabel, getEmployeeSecondaryLine } from '@/lib/employee-display';
 
 interface CompensationBenefitsProps {
   user: User;
@@ -25,7 +26,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [userRoleId, setUserRoleId] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(false);
 
-  // Admin UI: chọn nhân viên theo ID để xem lương
+  // Admin UI: chọn nhân viên (tìm theo ID / tên / email) để xem lương
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('me');
@@ -34,12 +35,20 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   const [monthRows, setMonthRows] = useState<PayrollMonthRow[]>([]);
   const [isLoadingMonthRows, setIsLoadingMonthRows] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [payrollEmployeeSelectOpen, setPayrollEmployeeSelectOpen] = useState(false);
   const selectedEmployee = useMemo(() => {
     if (selectedEmployeeId === 'me') return null;
     return employees.find((e) => e.id === selectedEmployeeId) || null;
   }, [employees, selectedEmployeeId]);
+
+  const payrollEmployeeSelectLabel = useMemo(() => {
+    if (selectedEmployeeId === 'me') return 'Tài khoản của tôi';
+    const emp = employees.find((e) => e.id === selectedEmployeeId);
+    if (!emp) return selectedEmployeeId;
+    const label = getEmployeeDisplayLabel(emp);
+    const sub = getEmployeeSecondaryLine(emp);
+    return sub ? `${label} (${sub})` : label;
+  }, [selectedEmployeeId, employees]);
 
   // Lấy role id từ JWT token hoặc user.role
   useEffect(() => {
@@ -79,7 +88,11 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         const data = await employeeService.getAllEmployees();
         const flattened = (data || []).map((emp: any) => ({
           ...emp,
-          fullName: emp.fullName || emp.full_name || '',
+          fullName:
+            emp.fullName ||
+            emp.full_name ||
+            [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim() ||
+            '',
           department:
             emp.department && typeof emp.department === 'object'
               ? emp.department.name
@@ -321,55 +334,120 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       {/* Tab Content */}
       {activeTab === 'salary' && (
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Chi tiết lương tháng {payroll?.month || selectedMonth}/{new Date().getFullYear()}
-            </h3>
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-gray-500">Tìm lương theo nhân viên (ID):</Label>
-                {isLoadingEmployees ? (
-                  <div className="text-xs text-gray-500">Đang tải...</div>
-                ) : (
-                  <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                    <SelectTrigger className="h-9 w-[360px] text-sm">
-                      <SelectValue placeholder="Chọn nhân viên" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="me">Tài khoản của tôi</SelectItem>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {(emp.fullName || (emp as any).full_name || 'N/A') as string} ({emp.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Chi tiết lương tháng {payroll?.month || selectedMonth}/{new Date().getFullYear()}
+          </h3>
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-gray-600">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+            <div className="text-sm text-gray-600 min-h-9 flex items-center">
               {isLoadingPayroll ? 'Đang tải dữ liệu lương...' : payroll ? `Tháng ${payroll.month}` : null}
             </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-gray-500">Tháng:</Label>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="h-9 w-28 text-sm">
-                  <SelectValue placeholder="Tháng" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }).map((_, i) => {
-                    const m = String(i + 1);
-                    return (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-end gap-3">
+              {isAdmin && (
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-gray-500">Nhân viên</Label>
+                  {isLoadingEmployees ? (
+                    <div className="text-xs text-gray-500 h-9 flex items-center px-1">Đang tải...</div>
+                  ) : (
+                    <Popover
+                      modal={false}
+                      open={payrollEmployeeSelectOpen}
+                      onOpenChange={setPayrollEmployeeSelectOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={payrollEmployeeSelectOpen}
+                          className="h-9 w-[11.5rem] sm:w-48 justify-between font-normal text-sm px-2.5"
+                        >
+                          <span className="truncate text-left">{payrollEmployeeSelectLabel}</span>
+                          <ChevronDown className="ml-1.5 h-3.5 w-3.5 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        align="start"
+                      >
+                        <Command>
+                          <CommandInput className="h-8 text-sm" placeholder="ID, tên, email…" />
+                          <CommandList className="max-h-[min(240px,50vh)]">
+                            <CommandEmpty>Không tìm thấy nhân viên.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                className="text-sm"
+                                value="tai khoan cua toi me"
+                                onSelect={() => {
+                                  setSelectedEmployeeId('me');
+                                  setPayrollEmployeeSelectOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-3.5 w-3.5 shrink-0',
+                                    selectedEmployeeId === 'me' ? 'opacity-100' : 'opacity-0',
+                                  )}
+                                />
+                                Tài khoản của tôi
+                              </CommandItem>
+                              {employees.map((emp) => {
+                                const label = getEmployeeDisplayLabel(emp);
+                                const sub = getEmployeeSecondaryLine(emp);
+                                return (
+                                  <CommandItem
+                                    key={emp.id}
+                                    className="flex items-center gap-1 text-sm"
+                                    value={emp.id}
+                                    keywords={[label, sub ?? '', emp.email ?? '', emp.phoneNumber ?? ''].filter(
+                                      Boolean,
+                                    )}
+                                    onSelect={() => {
+                                      setSelectedEmployeeId(emp.id);
+                                      setPayrollEmployeeSelectOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-3.5 w-3.5 shrink-0',
+                                        selectedEmployeeId === emp.id ? 'opacity-100' : 'opacity-0',
+                                      )}
+                                    />
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {label}
+                                      {sub ? (
+                                        <span className="text-muted-foreground font-normal"> · {sub}</span>
+                                      ) : null}
+                                    </span>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-gray-500">Tháng</Label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="h-9 w-28 text-sm">
+                    <SelectValue placeholder="Tháng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const m = String(i + 1);
+                      return (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

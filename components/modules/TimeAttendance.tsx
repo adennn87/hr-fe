@@ -32,6 +32,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { cn } from '@/components/ui/utils';
+import { getEmployeeDisplayLabel, getEmployeeSecondaryLine } from '@/lib/employee-display';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -187,9 +188,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     if (isLeaveFilterShowAll) return 'Tất cả nhân viên';
     const emp = employees.find((e) => e.id === leaveSelectedUserId);
     if (!emp) return leaveSelectedUserId;
-    const name =
-      emp.fullName || (emp as { full_name?: string }).full_name || emp.email || 'N/A';
-    return String(name);
+    return getEmployeeDisplayLabel(emp);
   }, [isLeaveFilterShowAll, leaveSelectedUserId, employees]);
 
   /** User thường: chỉ đơn của chính họ (lọc thêm phía client nếu API lệch). Admin: theo bộ lọc hoặc tất cả. */
@@ -214,8 +213,10 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   const displayScheduleBrowseAll = useMemo(() => {
     if (scheduleBrowseAll.length === 0) return [];
     return [...scheduleBrowseAll].sort((a, b) => {
-      const nameA = employees.find((e) => e.id === a.userId)?.fullName || a.userId;
-      const nameB = employees.find((e) => e.id === b.userId)?.fullName || b.userId;
+      const empA = employees.find((e) => e.id === a.userId);
+      const empB = employees.find((e) => e.id === b.userId);
+      const nameA = empA ? getEmployeeDisplayLabel(empA) : a.userId;
+      const nameB = empB ? getEmployeeDisplayLabel(empB) : b.userId;
       return String(nameA).localeCompare(String(nameB), 'vi');
     });
   }, [scheduleBrowseAll, employees]);
@@ -251,7 +252,11 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       // Flatten department và role objects
       const flattened = data.map((emp: any) => ({
         ...emp,
-        fullName: emp.fullName || emp.full_name || '',
+        fullName:
+          emp.fullName ||
+          emp.full_name ||
+          [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim() ||
+          '',
         department:
           emp.department && typeof emp.department === 'object'
             ? emp.department.name
@@ -877,16 +882,16 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                             Tất cả nhân viên
                           </CommandItem>
                           {employees.map((emp) => {
-                            const display = (emp.fullName ||
-                              (emp as { full_name?: string }).full_name ||
-                              emp.email ||
-                              'N/A') as string;
-                            const searchValue = `${display} ${emp.id} ${emp.email ?? ''}`.trim();
+                            const label = getEmployeeDisplayLabel(emp);
+                            const sub = getEmployeeSecondaryLine(emp);
                             return (
                               <CommandItem
                                 className="flex items-center gap-1"
                                 key={emp.id}
-                                value={searchValue}
+                                value={emp.id}
+                                keywords={[label, sub ?? '', emp.email ?? '', emp.phoneNumber ?? ''].filter(
+                                  Boolean,
+                                )}
                                 onSelect={() => {
                                   setLeaveSelectedUserId(emp.id);
                                   setLeaveEmployeeFilterOpen(false);
@@ -898,9 +903,11 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                                     leaveSelectedUserId === emp.id ? 'opacity-100' : 'opacity-0',
                                   )}
                                 />
-                                <span className="min-w-0 flex-1 truncate">{display}</span>
-                                <span className="ml-2 shrink-0 text-xs text-gray-500 font-mono tabular-nums">
-                                  {emp.id}
+                                <span className="min-w-0 flex-1 truncate">
+                                  {label}
+                                  {sub ? (
+                                    <span className="text-muted-foreground font-normal"> · {sub}</span>
+                                  ) : null}
                                 </span>
                               </CommandItem>
                             );
@@ -1145,8 +1152,8 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
             displayScheduleBrowseAll.length > 0 ? (
               <div className="space-y-8">
                 {displayScheduleBrowseAll.map((block) => {
-                  const empLabel =
-                    employees.find((e) => e.id === block.userId)?.fullName || block.userId;
+                  const emp = employees.find((e) => e.id === block.userId);
+                  const empLabel = emp ? getEmployeeDisplayLabel(emp) : block.userId;
                   return (
                     <div key={block.userId} className="space-y-2">
                       <h4 className="text-sm font-semibold text-gray-800 border-b border-gray-100 pb-2">
@@ -1324,11 +1331,16 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                     <SelectValue placeholder="Chọn nhân viên" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.fullName} ({emp.email})
-                      </SelectItem>
-                    ))}
+                    {employees.map((emp) => {
+                      const label = getEmployeeDisplayLabel(emp);
+                      const sub = getEmployeeSecondaryLine(emp);
+                      return (
+                        <SelectItem key={emp.id} value={emp.id} textValue={`${label} ${sub ?? ''}`}>
+                          {label}
+                          {sub ? <span className="text-muted-foreground"> ({sub})</span> : null}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               )}

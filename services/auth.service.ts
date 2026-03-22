@@ -85,7 +85,7 @@ export const authService = {
    * Đăng ký tài khoản mới
    * @param data Dữ liệu từ form đăng ký
    */
-  async register(data: RegisterFormValues) {
+  async register(data: RegisterFormValues, recaptchaToken?: string | null) {
     // Format gender từ 'male'/'female'/'other' thành 'Male'/'Female'/'Other' để khớp với API
     const genderMap: Record<string, string> = {
       'male': 'Male',
@@ -108,9 +108,12 @@ export const authService = {
       roleId: (data as any).roleId || undefined,
     };
 
+    const body: Record<string, unknown> = { ...payload };
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
+
     return fetchClient<{ message: string; success: boolean }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
   },
 
@@ -118,10 +121,12 @@ export const authService = {
    * Gửi yêu cầu quên mật khẩu (Gửi OTP về email)
    * @param email 
    */
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string, recaptchaToken?: string | null) {
+    const body: Record<string, unknown> = { email };
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
     return fetchClient('/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(body),
     });
   },
 
@@ -141,10 +146,12 @@ export const authService = {
    * @param email Email người dùng
    * @param password Mật khẩu
    */
-  async loginOtp(email: string, password: string) {
+  async loginOtp(email: string, password: string, recaptchaToken?: string | null) {
+    const body: Record<string, unknown> = { email, password };
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
     return fetchClient<{ message: string; success: boolean }>('/auth/loginOtp', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     });
   },
 

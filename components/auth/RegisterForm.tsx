@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -27,6 +27,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { authService } from "@/services/auth.service";
 import { departmentService, Department as APIDepartment } from "@/services/department.service";
 import { roleService, type RoleOption } from "@/services/role.service";
+import { RecaptchaWidget, type RecaptchaHandle } from "@/components/auth/RecaptchaWidget";
+import { requireRecaptchaToken } from "@/lib/recaptcha-config";
 
 // --- 1. SCHEMA VALIDATION ---
 const registerSchema = z
@@ -91,6 +93,7 @@ interface RegisterFormProps {
 export function RegisterForm({ onBack }: RegisterFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
   const [departments, setDepartments] = useState<APIDepartment[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [roles, setRoles] = useState<RoleOption[]>([]);
@@ -183,6 +186,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
         onBack();
       }, 1500);
     } catch (error: unknown) {
+      recaptchaRef.current?.reset();
       console.error("Register error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Vui lòng kiểm tra lại thông tin.";
@@ -522,6 +526,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             </div>
           </div>
         </div>
+
+        <RecaptchaWidget ref={recaptchaRef} className="pt-1" />
 
         {/* SUBMIT BUTTON */}
         <Button

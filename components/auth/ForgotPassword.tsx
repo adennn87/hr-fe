@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 
 // Import Auth Service
 import { authService } from '@/services/auth.service';
+import { RecaptchaWidget, type RecaptchaHandle } from '@/components/auth/RecaptchaWidget';
+import { requireRecaptchaToken } from '@/lib/recaptcha-config';
 
 // Shadcn UI Imports
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,7 @@ interface ForgotPasswordFormProps {
 
 export function ForgotPasswordForm({ email, setIdentifier, onBack, onSuccess }: ForgotPasswordFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
 
   // 2. Setup Form
   const form = useForm<ForgotFormValues>({
@@ -50,8 +53,14 @@ export function ForgotPasswordForm({ email, setIdentifier, onBack, onSuccess }: 
   const onSubmit = async (data: ForgotFormValues) => {
     setIsLoading(true);
     try {
+      const rc = requireRecaptchaToken(() => recaptchaRef.current?.getToken() ?? null);
+      if (rc === null) {
+        setIsLoading(false);
+        return;
+      }
+
       // Gọi API Forgot Password từ Service
-      await authService.forgotPassword(data.email);
+      await authService.forgotPassword(data.email, rc);
 
       // Cập nhật lại email cho component cha (để bước Reset Password dùng lại)
       setIdentifier(data.email);
@@ -63,6 +72,7 @@ export function ForgotPasswordForm({ email, setIdentifier, onBack, onSuccess }: 
       // Chuyển sang trang nhập OTP (ResetPassword)
       onSuccess(); 
     } catch (error: any) {
+      recaptchaRef.current?.reset();
       console.error("Forgot password error:", error);
       toast.error("Gửi yêu cầu thất bại", {
         description: error.message || "Email không tồn tại hoặc có lỗi xảy ra."
@@ -121,6 +131,8 @@ export function ForgotPasswordForm({ email, setIdentifier, onBack, onSuccess }: 
                 </FormItem>
               )}
             />
+
+            <RecaptchaWidget ref={recaptchaRef} className="pt-2" />
 
             <Button 
               type="submit" 
