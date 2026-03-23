@@ -34,10 +34,16 @@ export const departmentService = {
   async getDepartments(): Promise<Department[]> {
     const baseUrl = API_URL.replace('/api', '');
 
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    }
+
     const response = await fetch(`${baseUrl}/departments`, {
       method: 'GET',
       headers: {
         accept: '*/*',
+        ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
 

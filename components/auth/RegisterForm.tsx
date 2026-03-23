@@ -77,6 +77,7 @@ const registerSchema = z
 
     confirmPassword: z.string(),
     roleId: z.string().min(1, "Vui lòng chọn role"),
+    salaryPerDay: z.number().min(0, "Lương không hợp lệ"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Mật khẩu không khớp",
@@ -106,13 +107,14 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
     watch,
     formState: { errors },
   } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema) as any,
     defaultValues: {
       gender: Gender.MALE,
       department: "",
       position: Position.Employee,
       taxCode: "",
       roleId: "",
+      salaryPerDay: 0,
     },
   });
 
@@ -155,7 +157,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
   // Since we are using dynamic IDs now, the previous position mapping by name might not work as before.
   // For now, let's allow all positions for any department since we don't have a reliable mapping for dynamic IDs.
   // Unless the user wants to keep a specific mapping for certain IDs.
-  const availablePositions = [Position.Manager, Position.Employee];
+  // Use the full enum for available positions
+  const availablePositions = Object.values(Position);
 
   // Tính ngày max cho input date (Hôm nay - 18 năm)
   const maxDate = new Date();
@@ -376,8 +379,10 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
                   }`}
                 >
                   {!selectedDepartmentId ? (
-                    <option value={Position.Employee}>Chọn phòng ban trước</option>
-                  ) : null}
+                    <option value="">Chọn phòng ban trước</option>
+                  ) : (
+                    <option value="">Chọn chức vụ...</option>
+                  )}
 
                   {availablePositions.map((position) => (
                     <option key={position} value={position}>
@@ -390,6 +395,26 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               {errors.position && (
                 <p className="text-red-500 text-xs mt-1">
                   {errors.position.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Salary Per Day (VNĐ) <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  {...register("salaryPerDay", { valueAsNumber: true })}
+                  type="number"
+                  placeholder="500000"
+                  className={`pl-10 ${errors.salaryPerDay ? "border-red-500" : ""}`}
+                />
+                <CreditCard className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              </div>
+              {errors.salaryPerDay && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.salaryPerDay.message}
                 </p>
               )}
             </div>

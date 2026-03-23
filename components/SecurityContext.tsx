@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, XCircle, MapPin, Monitor, Clock, LogOut, ChevronDown } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, MapPin, Monitor, Clock, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
 import { User, SecurityContextData } from '@/lib/auth-types';
+import { ProfileModal } from './ProfileModal';
+import { authService } from '@/services/auth.service';
+import { toast } from 'sonner';
 
 interface SecurityContextProps {
   context: SecurityContextData;
@@ -12,6 +15,9 @@ interface SecurityContextProps {
 
 export function SecurityContext({ context, user, onLogout }: SecurityContextProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [fullProfile, setFullProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const safeUserName = (user.fullName || (user as any).full_name || '').trim() || 'User';
   const hasAvatar = Boolean(user.avatar?.trim());
   const userInitial = safeUserName.charAt(0).toUpperCase();
@@ -23,6 +29,22 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
   };
 
   const riskLevel = getRiskLevel(context.riskScore);
+
+  const handleFetchProfile = async () => {
+    try {
+      setLoadingProfile(true);
+      const data = await authService.getProfile();
+      setFullProfile(data);
+      setIsProfileOpen(true);
+    } catch (error: any) {
+      console.error("Failed to fetch profile:", error);
+      toast.error("Không thể tải thông tin hồ sơ", {
+        description: error.message
+      });
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm">
@@ -93,12 +115,28 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
             </button>
 
             <button
+              onClick={handleFetchProfile}
+              disabled={loadingProfile}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <UserIcon className="w-4 h-4" />
+              {loadingProfile ? 'Đang tải...' : 'Hồ sơ'}
+            </button>
+
+            <button
               onClick={onLogout}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Đăng xuất
             </button>
+
+            <ProfileModal 
+              isOpen={isProfileOpen} 
+              onClose={() => setIsProfileOpen(false)} 
+              profile={fullProfile} 
+              onUpdate={handleFetchProfile}
+            />
           </div>
         </div>
 

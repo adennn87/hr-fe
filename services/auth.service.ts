@@ -1,4 +1,4 @@
-import { fetchClient } from '@/lib/api';
+import { fetchClient, API_URL } from '@/lib/api';
 import { RegisterFormValues } from '@/components/auth/RegisterForm';
 import { UserProfile } from '@/types/types';
 
@@ -16,6 +16,7 @@ export interface RegisterPayload {
   roleId?: string;
   mfaEnabled?: boolean;
   taxCode?: string; // Thêm trường taxCode tùy chọn
+  salaryPerDay?: number;
 }
 
 // Định nghĩa kiểu dữ liệu trả về từ API Login
@@ -106,6 +107,7 @@ export const authService = {
       citizen_Id: data.citizen_Id,
       taxCode: data.taxCode || undefined, // Gửi taxCode nếu có
       roleId: (data as any).roleId || undefined,
+      salaryPerDay: data.salaryPerDay,
     };
 
     const body: Record<string, unknown> = { ...payload };
@@ -169,11 +171,69 @@ export const authService = {
   },
 
   /**
-   * Lấy thông tin Profile hiện tại (thường dùng khi F5 trang để lấy lại user context)
+   * Lấy thông tin Profile chi tiết của người dùng hiện tại
+   * API endpoint: GET /users/profile (không có /api prefix)
    */
-  async getProfile() {
-    return fetchClient<UserProfile>('/auth/profile', {
+  async getProfile(): Promise<any> {
+    const baseUrl = API_URL.replace('/api', '');
+    
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    }
+
+    if (!token) {
+      throw new Error('Authorization token is required');
+    }
+
+    const response = await fetch(`${baseUrl}/users/profile`, {
       method: 'GET',
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Cập nhật thông tin Profile của người dùng hiện tại
+   * API endpoint: PATCH /users (không có /api prefix)
+   */
+  async updateProfile(data: any): Promise<any> {
+    const baseUrl = API_URL.replace('/api', '');
+    
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    }
+
+    if (!token) {
+      throw new Error('Authorization token is required');
+    }
+
+    const response = await fetch(`${baseUrl}/users`, {
+      method: 'PATCH',
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
+    }
+
+    return response.json();
   }
 };
