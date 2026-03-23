@@ -11,6 +11,8 @@ import { employeeService, type Employee } from '@/services/employee.service';
 import { departmentService } from '@/services/department.service';
 import { assetService, type AllocatedAsset } from '@/services/asset.service';
 import { toast } from 'sonner';
+import { usePermissions } from '@/lib/use-permissions';
+import { Button } from '@/components/ui/button';
 
 interface CoreHRProps {
   user: UserType;
@@ -72,6 +74,9 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const [isLoadingEmployeeDetail, setIsLoadingEmployeeDetail] = useState(false);
   const [allocatedAssets, setAllocatedAssets] = useState<AllocatedAsset[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+  const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
+  const [deptForm, setDeptForm] = useState({ code: '', name: '', description: '' });
+  const { hasPermission } = usePermissions();
 
   // State quản lý việc đóng/mở danh sách nhân sự trong phòng ban
   const [expandedDepts, setExpandedDepts] = useState<string[]>([]);
@@ -500,6 +505,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   };
 
   const handleDeleteEmployee = async (employeeId: string) => {
+    if (!hasPermission('USER_DELETE')) {
+      toast.error('Bạn không có quyền xóa nhân sự');
+      return;
+    }
     if (!confirm('Bạn có chắc chắn muốn xóa nhân sự này?')) return;
 
     try {
@@ -519,6 +528,25 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       toast.error('Không thể xóa nhân sự', {
         description: error.message || 'Vui lòng thử lại sau',
       });
+    }
+  };
+
+  const handleCreateDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hasPermission('DEPARTMENT_CREATE')) {
+      toast.error('Bạn không có quyền tạo phòng ban');
+      return;
+    }
+
+    try {
+      await departmentService.createDepartment(deptForm);
+      toast.success('Tạo phòng ban thành công');
+      setIsDeptModalOpen(false);
+      setDeptForm({ code: '', name: '', description: '' });
+      // Refresh data
+      await fetchAllEmployees();
+    } catch (error: any) {
+      toast.error(error.message || 'Lỗi khi tạo phòng ban');
     }
   };
 
@@ -615,7 +643,17 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-bold text-slate-900">Sơ đồ tổ chức trực tuyến</h3>
-              <span className="px-3 py-1 bg-purple-50 text-purple-600 border border-purple-100 rounded-full text-[10px] font-black uppercase">Cập nhật thực tế</span>
+              <div className="flex items-center gap-3">
+                {hasPermission('DEPARTMENT_CREATE') && (
+                  <Button 
+                    onClick={() => setIsDeptModalOpen(true)}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Thêm phòng ban
+                  </Button>
+                )}
+                <span className="px-3 py-1 bg-purple-50 text-purple-600 border border-purple-100 rounded-full text-[10px] font-black uppercase">Cập nhật thực tế</span>
+              </div>
             </div>
 
             {isLoadingEmployees ? (
@@ -894,7 +932,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                   </>
                 )}
               </div>
-            ) : isSystemAdmin ? (
+            ) : hasPermission('USER_VIEW') ? (
               <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="relative flex-1 max-w-md">
@@ -906,11 +944,14 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                       placeholder="Tìm mã nhân viên, tên, phòng ban..."
                     />
                   </div>
-                  <button
-                    onClick={openAddModal}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-slate-200 active:scale-95 transition-all"
-                  >                    <Plus className="w-4 h-4" /> Thêm nhân sự mới
-                  </button>
+                  {hasPermission('USER_CREATE') && (
+                    <button
+                      onClick={openAddModal}
+                      className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-slate-200 active:scale-95 transition-all"
+                    >
+                      <Plus className="w-4 h-4" /> Thêm nhân sự mới
+                    </button>
+                  )}
                 </div>
                 {/* Table nhân sự giữ nguyên logic cũ nhưng làm đẹp CSS hơn */}
                 <div className="overflow-x-auto">
@@ -957,15 +998,17 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteEmployee(emp.id);
-                                }}
-                                className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {hasPermission('USER_DELETE') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteEmployee(emp.id);
+                                  }}
+                                  className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1173,6 +1216,14 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         </div>
       )}
 
+      <DeptModal 
+        isOpen={isDeptModalOpen} 
+        onClose={() => setIsDeptModalOpen(false)}
+        form={deptForm}
+        setForm={setDeptForm}
+        onSubmit={handleCreateDepartment}
+      />
+
     </div>
   );
 }
@@ -1204,5 +1255,74 @@ function FormField({
         className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
       />
     </label>
+  );
+}
+
+function DeptModal({ 
+  isOpen, 
+  onClose, 
+  form, 
+  setForm, 
+  onSubmit 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  form: { code: string; name: string; description: string };
+  setForm: React.Dispatch<React.SetStateAction<{ code: string; name: string; description: string }>>;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-xl font-black text-slate-900">Thêm phòng ban mới</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
+            <Plus className="w-6 h-6 rotate-45" />
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          <FormField 
+            label="Mã phòng ban" 
+            value={form.code} 
+            onChange={(val) => setForm(prev => ({ ...prev, code: val }))} 
+            placeholder="Ví dụ: IT, HR, MKT..." 
+            required 
+          />
+          <FormField 
+            label="Tên phòng ban" 
+            value={form.name} 
+            onChange={(val) => setForm(prev => ({ ...prev, name: val }))} 
+            placeholder="Ví dụ: Công nghệ thông tin..." 
+            required 
+          />
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả</span>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Mô tả ngắn gọn về phòng ban..."
+              className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px] text-sm"
+            />
+          </label>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"
+            >
+              Hủy
+            </button>
+            <button 
+              type="submit" 
+              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-200"
+            >
+              Tạo mới
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

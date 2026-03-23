@@ -7,6 +7,7 @@ import { employeeService, type Employee } from '@/services/employee.service';
 import { payrollService, type PayrollDetail, type PayrollMonthRow } from '@/services/payroll.service';
 import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
 import { toast } from 'sonner';
+import { usePermissions } from '@/lib/use-permissions';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,6 +36,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   const [monthRows, setMonthRows] = useState<PayrollMonthRow[]>([]);
   const [isLoadingMonthRows, setIsLoadingMonthRows] = useState(false);
+  const { hasPermission } = usePermissions();
   const [payrollEmployeeSelectOpen, setPayrollEmployeeSelectOpen] = useState(false);
   const selectedEmployee = useMemo(() => {
     if (selectedEmployeeId === 'me') return null;
@@ -493,7 +495,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                     </SelectContent>
                   </Select>
 
-                  {isAdmin && isPayrollDataMissing && (
+                  {isAdmin && isPayrollDataMissing && hasPermission('PAYROLL_GENERATE') && (
                     <Button 
                       onClick={handleCalculatePayroll} 
                       disabled={isCalculating}

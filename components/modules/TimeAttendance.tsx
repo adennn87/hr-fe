@@ -52,6 +52,7 @@ import {
 import { employeeService, type Employee } from '@/services/employee.service';
 import { getJwtRoleInfo, isAdminRoleId, isAdminUser, normalizeRoleId } from '@/lib/role-utils';
 import { toast } from 'sonner';
+import { usePermissions } from '@/lib/use-permissions';
 
 interface TimeAttendanceProps {
   user: User;
@@ -154,6 +155,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   const [isEditDayModalOpen, setIsEditDayModalOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<WeeklyScheduleDay | null>(null);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const { hasPermission } = usePermissions();
   const scheduleFetchGenRef = useRef(0);
 
   const isAdmin = useMemo(() => isAdminUser(userRoleId, user.role), [userRoleId, user.role]);
@@ -286,7 +288,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
           leaveReason: day.leaveReason
         };
       })
-      .sort((a, b) => (a.dayOfWeek === 7 ? 7 : a.dayOfWeek) - (b.dayOfWeek === 7 ? 7 : b.dayOfWeek));
+      .sort((a: WeekScheduleRow, b: WeekScheduleRow) => (a.dayOfWeek === 7 ? 7 : a.dayOfWeek) - (b.dayOfWeek === 7 ? 7 : b.dayOfWeek));
   };
 
   const fetchWeeklyScheduleForUser = async (userId: string, requestGen?: number) => {
@@ -484,7 +486,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
             </Button>
           </div>
 
-          {isAdmin && (
+          {isAdmin && hasPermission('LEAVE_REQUEST_APPROVE') && (
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
               <Label className="text-sm font-medium text-gray-600 shrink-0">Lọc nhân viên:</Label>
               <Select value={leaveSelectedUserId} onValueChange={setLeaveSelectedUserId}>
@@ -516,7 +518,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                       <p className="text-sm text-gray-600">{req.startDate} → {req.endDate}</p>
                       <p className="text-sm text-gray-500 mt-1 italic">"{req.reason}"</p>
                     </div>
-                    {isAdmin && req.status === 'PENDING' && (
+                    {isAdmin && req.status === 'PENDING' && hasPermission('LEAVE_REQUEST_APPROVE') && (
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="text-green-600" onClick={() => leaveRequestService.updateLeaveStatus(req.id, 'APPROVED').then(() => loadEmployees())}>Duyệt</Button>
                         <Button size="sm" variant="outline" className="text-red-600">Từ chối</Button>
@@ -541,7 +543,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                    <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                  </div>
                )}
-               {isAdmin && (
+               {isAdmin && hasPermission('WEEKLY_SCHEDULE_VIEW') && (
                  <Select value={scheduleScope} onValueChange={v => setScheduleScope(v as any)}>
                    <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
                    <SelectContent>
@@ -550,7 +552,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                    </SelectContent>
                  </Select>
                )}
-               {isAdmin && (
+               {isAdmin && hasPermission('WEEKLY_SCHEDULE_CREATE') && (
                  <Button onClick={handleOpenCreateScheduleModal} size="sm" className="bg-purple-600 hover:bg-purple-700 h-9">
                    <Plus className="w-4 h-4 mr-2" /> Tạo lịch
                  </Button>

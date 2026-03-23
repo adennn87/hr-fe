@@ -13,11 +13,12 @@ const navItems = [
   { href: '/dashboard/employees', label: 'Nhân sự', module: 'USER' },
   { href: '/dashboard/rbac', label: 'Vai trò', module: 'ROLE' },
   { href: '/dashboard/attendance', label: 'Lịch làm việc', module: 'WEEKLY_SCHEDULE' },
-  { href: '/dashboard/timekeeping', label: 'Chấm công', module: 'TIMEKEEPING' },
+  // { href: '/dashboard/timekeeping', label: 'Chấm công', module: 'TIMEKEEPING' },
   { href: '/dashboard/departments', label: 'Phòng ban', module: 'DEPARTMENT' },
   { href: '/dashboard/assets', label: 'Tài sản', module: 'ASSET' },
   { href: '/dashboard/asset-management', label: 'Quản lý cấp phát', module: 'ASSET_ALLOCATE' },
-  { href: '/dashboard/leave-requests', label: 'Nghỉ phép', module: 'LEAVE_REQUEST' },
+  // { href: '/dashboard/leave-requests', label: 'Nghỉ phép', module: 'LEAVE_REQUEST' },
+  // { href: '/dashboard/rbac', label: 'Access Manager', module: 'FUNCTION' },
   { href: '/dashboard/payroll', label: 'Lương thưởng', module: 'PAYROLL' },
 ];
 
@@ -62,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const active = pathname === item.href;
             return (
               <Link
-                key={item.href}
+                key={item.label}
                 href={item.href}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${active ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
                   }`}
