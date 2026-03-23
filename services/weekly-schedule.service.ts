@@ -1,10 +1,15 @@
 import { API_URL } from '@/lib/api';
 
 export interface WeeklyScheduleDay {
+  id?: string;
   dayOfWeek: number; // 1-7 (Monday-Sunday)
-  startTime?: string; // Format: "HH:mm"
-  endTime?: string; // Format: "HH:mm"
+  startTime?: string | null; // Format: "HH:mm"
+  endTime?: string | null; // Format: "HH:mm"
   isWorking: boolean;
+  date?: string;
+  isLeave?: boolean;
+  leaveType?: string | null;
+  leaveReason?: string | null;
 }
 
 export interface CreateWeeklyScheduleRequest {
@@ -16,9 +21,11 @@ export interface CreateWeeklyScheduleRequest {
 
 export interface WeeklySchedule {
   id: string;
-  userId: string;
+  userId?: string;
+  user?: any; // Full user object
   weekStartDate: string;
   weekEndDate: string;
+  status?: string;
   days: WeeklyScheduleDay[];
   createdAt?: string;
   updatedAt?: string;
@@ -189,6 +196,44 @@ export const weeklyScheduleService = {
         throw error;
       }
       throw new Error(error.message || 'Không thể tải lịch làm việc');
+    }
+  },
+
+  /**
+   * Cập nhật các ngày trong lịch tuần
+   * API endpoint: PATCH /weekly-schedules/:id
+   */
+  async updateWeeklyScheduleDays(id: string, days: Partial<WeeklyScheduleDay>[]): Promise<WeeklySchedule> {
+    try {
+      const baseUrl = API_URL.replace('/api', '');
+      const token = getAuthToken();
+      
+      const response = await fetch(`${baseUrl}/weekly-schedules/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': '/',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ days }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Error ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          const text = await response.text().catch(() => '');
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error updating weekly schedule days:', error);
+      throw new Error(error.message || 'Không thể cập nhật lịch làm việc');
     }
   },
 };
