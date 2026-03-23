@@ -37,6 +37,7 @@ interface EmployeeFormData {
   taxCode: string;
   status: string;
   role: string;
+  salaryPerDay: string;
 }
 
 const defaultEmployeeForm: EmployeeFormData = {
@@ -55,6 +56,7 @@ const defaultEmployeeForm: EmployeeFormData = {
   taxCode: '',
   status: 'active',
   role: 'Employee',
+  salaryPerDay: '',
 };
 
 
@@ -65,6 +67,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [employeeForm, setEmployeeForm] = useState<EmployeeFormData>(defaultEmployeeForm);
+  const [initialEmployeeForm, setInitialEmployeeForm] = useState<EmployeeFormData | null>(null);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [departmentsData, setDepartmentsData] = useState<Array<{
     department: string;
@@ -471,6 +474,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const openAddModal = () => {
     setEditingEmployeeId(null);
     setEmployeeForm(defaultEmployeeForm);
+    setInitialEmployeeForm(null);
     setIsModalOpen(true);
   };
 
@@ -484,7 +488,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       ? emp.role 
       : (emp.role && typeof emp.role === 'object' ? emp.role.name : '') || '';
     
-    setEmployeeForm({
+    const newForm = {
       ...defaultEmployeeForm,
       id: emp.id,
       fullName: emp.fullName || '',
@@ -500,7 +504,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       taxCode: emp.taxCode || '',
       status: emp.status || 'active',
       isActive: emp.isActive ?? true,
-    });
+      salaryPerDay: emp.salaryPerDay ? String(emp.salaryPerDay) : '',
+    };
+    setEmployeeForm(newForm);
+    setInitialEmployeeForm(newForm);
     setIsModalOpen(true);
   };
 
@@ -553,21 +560,50 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const payload: Partial<Employee> = {
-      fullName: employeeForm.fullName,
-      email: employeeForm.email,
-      phoneNumber: employeeForm.phoneNumber,
-      gender: employeeForm.gender,
-      dateOfBirth: employeeForm.dateOfBirth,
-      citizen_Id: employeeForm.citizen_Id,
-      department: employeeForm.department,
-      position: employeeForm.position,
-      address: employeeForm.address,
-      taxCode: employeeForm.taxCode,
-      status: employeeForm.status,
-      isActive: employeeForm.isActive,
-      ...(employeeForm.password && { password: employeeForm.password }),
-    };
+    let payload: Partial<Employee> = {};
+
+    if (editingEmployeeId && initialEmployeeForm) {
+      payload.id = editingEmployeeId;
+      if (employeeForm.fullName !== initialEmployeeForm.fullName) payload.fullName = employeeForm.fullName;
+      if (employeeForm.email !== initialEmployeeForm.email) payload.email = employeeForm.email;
+      if (employeeForm.phoneNumber !== initialEmployeeForm.phoneNumber) payload.phoneNumber = employeeForm.phoneNumber;
+      if (employeeForm.gender !== initialEmployeeForm.gender) payload.gender = employeeForm.gender;
+      if (employeeForm.dateOfBirth !== initialEmployeeForm.dateOfBirth) payload.dateOfBirth = employeeForm.dateOfBirth;
+      if (employeeForm.citizen_Id !== initialEmployeeForm.citizen_Id) payload.citizen_Id = employeeForm.citizen_Id;
+      if (employeeForm.department !== initialEmployeeForm.department) payload.department = employeeForm.department;
+      if (employeeForm.position !== initialEmployeeForm.position) payload.position = employeeForm.position;
+      if (employeeForm.address !== initialEmployeeForm.address) payload.address = employeeForm.address;
+      if (employeeForm.taxCode !== initialEmployeeForm.taxCode) payload.taxCode = employeeForm.taxCode;
+      if (employeeForm.status !== initialEmployeeForm.status) payload.status = employeeForm.status;
+      if (employeeForm.isActive !== initialEmployeeForm.isActive) payload.isActive = employeeForm.isActive;
+      if (employeeForm.salaryPerDay !== initialEmployeeForm.salaryPerDay) {
+        payload.salaryPerDay = employeeForm.salaryPerDay ? Number(employeeForm.salaryPerDay) : null;
+      }
+      if (employeeForm.password) payload.password = employeeForm.password;
+
+      if (Object.keys(payload).length <= 1) {
+        toast.info('Không có thông tin nào thay đổi');
+        setIsModalOpen(false);
+        return;
+      }
+    } else {
+      payload = {
+        fullName: employeeForm.fullName,
+        email: employeeForm.email,
+        phoneNumber: employeeForm.phoneNumber,
+        gender: employeeForm.gender,
+        dateOfBirth: employeeForm.dateOfBirth,
+        citizen_Id: employeeForm.citizen_Id,
+        department: employeeForm.department,
+        position: employeeForm.position,
+        address: employeeForm.address,
+        taxCode: employeeForm.taxCode,
+        status: employeeForm.status,
+        isActive: employeeForm.isActive,
+        ...(employeeForm.salaryPerDay && { salaryPerDay: Number(employeeForm.salaryPerDay) }),
+        ...(employeeForm.password && { password: employeeForm.password }),
+      };
+    }
 
     try {
     if (editingEmployeeId) {
@@ -746,15 +782,42 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                 <span className="text-[10px] font-mono text-slate-400">{emp.email || 'N/A'}</span>
                                 <span className="text-[10px] font-bold text-slate-500">{emp.id}</span>
                               </div>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewEmployee(emp.id);
-                                }}
-                                className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors"
-                              >
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                {hasPermission('USER_UPDATE') && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openEditModal(emp);
+                                    }}
+                                    className="p-2 hover:bg-purple-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
+                                    title="Chỉnh sửa nhân sự"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {hasPermission('USER_DELETE') && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteEmployee(emp.id);
+                                    }}
+                                    className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
+                                    title="Xóa nhân sự"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewEmployee(emp.id);
+                                  }}
+                                  className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors"
+                                  title="Xem chi tiết"
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )) : (
@@ -989,14 +1052,27 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           </td>
                           <td className="px-8 py-5 text-right">
                             <div className="flex justify-end gap-1">
+                              {hasPermission('USER_UPDATE') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditModal(emp);
+                                  }}
+                                  className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-blue-600"
+                                  title="Chỉnh sửa nhân sự"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleViewEmployee(emp.id);
                                 }}
                                 className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-purple-600"
+                                title="Xem chi tiết"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <ChevronRight className="w-4 h-4" />
                               </button>
                               {hasPermission('USER_DELETE') && (
                                 <button
@@ -1183,7 +1259,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
               <button onClick={() => setIsModalOpen(false)} className="text-sm font-bold text-slate-500 hover:text-slate-900">Đóng</button>
             </div>
             <form onSubmit={handleFormSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <FormField label="Mã nhân sự" value={employeeForm.id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, id: value }))} placeholder="EMP-2024-001" />
+              <FormField label="Mã nhân sự" value={employeeForm.id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, id: value }))} placeholder="EMP-2024-001" disabled={!!editingEmployeeId} />
               <FormField label="Họ và tên" value={employeeForm.fullName} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, fullName: value }))} required />
               <FormField label="Email" type="email" value={employeeForm.email} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, email: value }))} required />
               <FormField label="Mật khẩu" type="password" value={employeeForm.password} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, password: value }))} />
@@ -1197,6 +1273,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
               <FormField label="Địa chỉ" value={employeeForm.address} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, address: value }))} required />
               <FormField label="Mã số thuế" value={employeeForm.taxCode} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, taxCode: value }))} required />
               <FormField label="Trạng thái" value={employeeForm.status} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, status: value }))} required />
+              <FormField label="Lương theo ngày" type="number" value={employeeForm.salaryPerDay} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, salaryPerDay: value }))} />
               <div className="flex items-center gap-2 mt-6">
                 <input
                   id="isActive"
@@ -1235,6 +1312,7 @@ function FormField({
   placeholder,
   type = 'text',
   required = false,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -1242,6 +1320,7 @@ function FormField({
   placeholder?: string;
   type?: React.HTMLInputTypeAttribute;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <label className="flex flex-col gap-2">
@@ -1252,7 +1331,8 @@ function FormField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        disabled={disabled}
+        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
       />
     </label>
   );

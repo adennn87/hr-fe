@@ -22,6 +22,7 @@ export interface Employee {
   address?: string | null;
   taxCode?: string | null;
   status?: string | null;
+  salaryPerDay?: string | number | null;
   role?: string | null | {
     id: string;
     name: string;
@@ -247,10 +248,10 @@ export const employeeService = {
       token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
     }
 
-    const response = await fetch(`${baseUrl}/users/${employeeId}`, {
-      method: 'PUT',
+    const response = await fetch(`${baseUrl}/users/userAdmin?id=${employeeId}`, {
+      method: 'PATCH',
       headers: {
-        'accept': '/',
+        'accept': '*/*',
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -277,10 +278,10 @@ export const employeeService = {
       token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
     }
 
-    const response = await fetch(`${baseUrl}/users/${employeeId}`, {
+    const response = await fetch(`${baseUrl}/users/DeleteUser?id=${employeeId}`, {
       method: 'DELETE',
       headers: {
-        'accept': '/',
+        'accept': '*/*',
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
       },
