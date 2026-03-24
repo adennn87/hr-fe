@@ -96,8 +96,8 @@ export function IAMCore({ user }: IAMCoreProps) {
   const filteredFunctions = React.useMemo(() => {
     if (!functionSearchQuery.trim()) return functions;
     const lower = functionSearchQuery.toLowerCase().trim();
-    return functions.filter(f => 
-      f.name.toLowerCase().includes(lower) || 
+    return functions.filter(f =>
+      f.name.toLowerCase().includes(lower) ||
       f.code.toLowerCase().includes(lower)
     );
   }, [functions, functionSearchQuery]);
@@ -105,9 +105,9 @@ export function IAMCore({ user }: IAMCoreProps) {
   const filteredEditFunctions = React.useMemo(() => {
     if (!editFunctionSearchQuery.trim()) return functions;
     const lower = editFunctionSearchQuery.toLowerCase().trim();
-    return functions.filter(f => 
-       f.name.toLowerCase().includes(lower) || 
-       f.code.toLowerCase().includes(lower)
+    return functions.filter(f =>
+      f.name.toLowerCase().includes(lower) ||
+      f.code.toLowerCase().includes(lower)
     );
   }, [functions, editFunctionSearchQuery]);
 
@@ -192,7 +192,7 @@ export function IAMCore({ user }: IAMCoreProps) {
       });
       toast.success('Cập nhật vai trò thành công');
       setIsEditing(false);
-      
+
       // Refresh current detail
       setIsLoadingDetail(true);
       const detail = await roleService.getRoleDetail(selectedRole.id);
@@ -203,7 +203,7 @@ export function IAMCore({ user }: IAMCoreProps) {
         functionIds: detail.roleFunctions.map(rf => rf.function.id)
       });
       setIsLoadingDetail(false);
-      
+
       fetchData(); // Refresh main list
     } catch (error: any) {
       console.error('Error updating role:', error);
@@ -242,17 +242,17 @@ export function IAMCore({ user }: IAMCoreProps) {
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <div className="relative flex-1 md:w-64">
-                   <Input 
-                    placeholder="Tìm kiếm vai trò..." 
+                  <Input
+                    placeholder="Tìm kiếm vai trò..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     className="pl-9 h-10 rounded-xl border-slate-200 focus:ring-blue-500 shadow-sm"
-                   />
-                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 </div>
                 {hasPermission('ROLE_CREATE') && (
-                  <Button 
-                    onClick={() => setIsAddRoleOpen(true)} 
+                  <Button
+                    onClick={() => setIsAddRoleOpen(true)}
                     className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-5 h-10 shadow-lg shadow-slate-200 transition-all hover:-translate-y-0.5 shrink-0"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Tạo vai trò
@@ -268,7 +268,7 @@ export function IAMCore({ user }: IAMCoreProps) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredRoles.map((role) => (
-                  <div key={role.id} 
+                  <div key={role.id}
                     onClick={() => handleOpenConfig(role)}
                     className="group cursor-pointer bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden"
                   >
@@ -278,7 +278,7 @@ export function IAMCore({ user }: IAMCoreProps) {
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transform group-hover:translate-x-1 transition-all" />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors text-lg">
@@ -294,7 +294,7 @@ export function IAMCore({ user }: IAMCoreProps) {
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-slate-100 italic text-[10px] text-slate-400 flex items-center gap-1.5">
-                       <Info className="w-3 h-3" /> Click để xem chi tiết & Cập nhật
+                      <Info className="w-3 h-3" /> Click để xem chi tiết & Cập nhật
                     </div>
                   </div>
                 ))}
@@ -324,9 +324,9 @@ export function IAMCore({ user }: IAMCoreProps) {
                   </div>
                 </div>
                 {!isEditing && !isLoadingDetail && selectedRoleDetail && hasPermission('ROLE_UPDATE') && (
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => setIsEditing(true)}
                     className="bg-transparent border-slate-700 text-white hover:bg-slate-800 rounded-xl"
                   >
@@ -334,9 +334,9 @@ export function IAMCore({ user }: IAMCoreProps) {
                   </Button>
                 )}
                 {isEditing && (
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => setIsEditing(false)}
                     className="bg-transparent border-slate-700 text-white hover:bg-slate-800 rounded-xl"
                   >
@@ -350,8 +350,8 @@ export function IAMCore({ user }: IAMCoreProps) {
           <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8 custom-scrollbar bg-white">
             {isLoadingDetail ? (
               <div className="flex flex-col items-center justify-center py-20 space-y-4 text-slate-400">
-                 <Loader2 className="w-10 h-10 animate-spin" />
-                 <p className="text-sm font-medium">Đang tải cấu hình...</p>
+                <Loader2 className="w-10 h-10 animate-spin" />
+                <p className="text-sm font-medium">Đang tải cấu hình...</p>
               </div>
             ) : selectedRoleDetail ? (
               <>
@@ -361,17 +361,17 @@ export function IAMCore({ user }: IAMCoreProps) {
                     <div className="grid gap-4">
                       <div className="space-y-2">
                         <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tên vai trò</Label>
-                        <Input 
+                        <Input
                           value={editForm.name}
-                          onChange={e => setEditForm(p => ({...p, name: e.target.value}))}
+                          onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
                           className="h-11 rounded-xl border-slate-200"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</Label>
-                        <Input 
+                        <Input
                           value={editForm.description}
-                          onChange={e => setEditForm(p => ({...p, description: e.target.value}))}
+                          onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
                           className="h-11 rounded-xl border-slate-200"
                         />
                       </div>
@@ -383,8 +383,8 @@ export function IAMCore({ user }: IAMCoreProps) {
                       </div>
 
                       <div className="relative">
-                        <Input 
-                          placeholder="Tìm chức năng..." 
+                        <Input
+                          placeholder="Tìm chức năng..."
                           value={editFunctionSearchQuery}
                           onChange={e => setEditFunctionSearchQuery(e.target.value)}
                           className="h-9 rounded-lg border-slate-100 bg-slate-50 text-xs px-9 shadow-inner"
@@ -394,20 +394,20 @@ export function IAMCore({ user }: IAMCoreProps) {
 
                       <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {filteredEditFunctions.map((fn) => (
-                          <div 
-                            key={fn.id} 
-                            onClick={() => toggleFunctionId(fn.id, true)}
+                          <div
+                            key={fn.id}
+                            // FIX: bỏ onClick để tránh gọi state 2 lần
                             className={cn(
                               "flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
-                              editForm.functionIds.includes(fn.id) 
-                                ? "bg-blue-50 border-blue-200" 
+                              editForm.functionIds.includes(fn.id)
+                                ? "bg-blue-50 border-blue-200"
                                 : "bg-white border-slate-100 hover:border-slate-300"
                             )}
                           >
                             <div className="flex items-center gap-3">
-                              <Checkbox 
-                                checked={editForm.functionIds.includes(fn.id)} 
-                                onCheckedChange={() => toggleFunctionId(fn.id, true)}
+                              <Checkbox
+                                checked={editForm.functionIds.includes(fn.id)}
+                                onCheckedChange={() => toggleFunctionId(fn.id, true)} // FIX: chỉ toggle ở đây
                                 className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                               />
                               <div>
@@ -426,48 +426,48 @@ export function IAMCore({ user }: IAMCoreProps) {
                   <div className="animate-in fade-in duration-500 space-y-8">
                     {/* Info Section */}
                     <div className="space-y-4">
-                       <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Thông tin cơ bản</h5>
-                       <div className="grid gap-4">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-slate-400">Mô tả</Label>
-                            <p className="text-sm text-slate-700 font-medium leading-relaxed">
-                              {selectedRoleDetail.description || 'Chưa có mô tả chi tiết.'}
-                            </p>
-                          </div>
-                       </div>
+                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Thông tin cơ bản</h5>
+                      <div className="grid gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-slate-400">Mô tả</Label>
+                          <p className="text-sm text-slate-700 font-medium leading-relaxed">
+                            {selectedRoleDetail.description || 'Chưa có mô tả chi tiết.'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Users Section */}
                     <div className="space-y-4">
-                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Người dùng ({selectedRoleDetail.users.length})</h5>
-                         <Users className="w-3.5 h-3.5 text-slate-300" />
-                       </div>
-                       <div className="grid gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                          {selectedRoleDetail.users.length > 0 ? (
-                            selectedRoleDetail.users.map((u: any) => (
-                              <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">{u.fullName.slice(0, 1)}</div>
-                                  <div>
-                                    <p className="text-sm font-bold text-slate-800">{u.fullName}</p>
-                                    <p className="text-[10px] text-slate-400">{u.email}</p>
-                                  </div>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Người dùng ({selectedRoleDetail.users.length})</h5>
+                        <Users className="w-3.5 h-3.5 text-slate-300" />
+                      </div>
+                      <div className="grid gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                        {selectedRoleDetail.users.length > 0 ? (
+                          selectedRoleDetail.users.map((u: any) => (
+                            <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">{u.fullName.slice(0, 1)}</div>
+                                <div>
+                                  <p className="text-sm font-bold text-slate-800">{u.fullName}</p>
+                                  <p className="text-[10px] text-slate-400">{u.email}</p>
                                 </div>
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{u.position}</span>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-slate-400 italic py-2 text-center">Chưa có người dùng nào được gán vai trò này.</p>
-                          )}
-                       </div>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{u.position}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-400 italic py-2 text-center">Chưa có người dùng nào được gán vai trò này.</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Permissions Section */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Chức năng gán quyền ({selectedRoleDetail.roleFunctions.length})</h5>
-                         <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
+                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Chức năng gán quyền ({selectedRoleDetail.roleFunctions.length})</h5>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {selectedRoleDetail.roleFunctions.map((rf) => (
@@ -490,15 +490,15 @@ export function IAMCore({ user }: IAMCoreProps) {
           <SheetFooter className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
             {isEditing ? (
               <div className="flex gap-3 w-full">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setIsEditing(false)} 
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsEditing(false)}
                   className="flex-1 h-12 rounded-xl font-bold text-slate-500 hover:bg-slate-200"
                 >
                   Hủy bỏ
                 </Button>
-                <Button 
-                  onClick={handleUpdateRole} 
+                <Button
+                  onClick={handleUpdateRole}
                   disabled={isSubmitting}
                   className="flex-[2] h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl gap-2 shadow-lg shadow-blue-100"
                 >
@@ -508,7 +508,7 @@ export function IAMCore({ user }: IAMCoreProps) {
               </div>
             ) : (
               <Button onClick={() => setIsConfigOpen(false)} className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl gap-2 shadow-lg shadow-slate-200 transition-all active:scale-[0.98]">
-                 Đóng chi tiết
+                Đóng chi tiết
               </Button>
             )}
           </SheetFooter>
@@ -519,10 +519,10 @@ export function IAMCore({ user }: IAMCoreProps) {
       <Dialog open={isAddRoleOpen} onOpenChange={setIsAddRoleOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[24px]">
           <div className="bg-slate-900 p-8 text-white shrink-0">
-             <DialogHeader>
-                <DialogTitle className="text-2xl font-bold tracking-tight">Tạo vai trò & Gán quyền</DialogTitle>
-                <p className="text-slate-400 text-sm mt-1">Định nghĩa vai trò mới và chọn các chức năng hệ thống được phép truy cập.</p>
-             </DialogHeader>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold tracking-tight">Tạo vai trò & Gán quyền</DialogTitle>
+              <p className="text-slate-400 text-sm mt-1">Định nghĩa vai trò mới và chọn các chức năng hệ thống được phép truy cập.</p>
+            </DialogHeader>
           </div>
 
           <form onSubmit={handleCreateRole} className="flex-1 overflow-hidden flex flex-col bg-white">
@@ -530,21 +530,21 @@ export function IAMCore({ user }: IAMCoreProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tên định danh vai trò</Label>
-                  <Input 
-                    required 
+                  <Input
+                    required
                     value={roleForm.name}
-                    onChange={e => setRoleForm(p => ({...p, name: e.target.value}))}
-                    placeholder="Ví dụ: Kế toán trưởng..." 
-                    className="h-11 rounded-xl border-slate-200 focus:ring-blue-600 shadow-sm" 
+                    onChange={e => setRoleForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Ví dụ: Kế toán trưởng..."
+                    className="h-11 rounded-xl border-slate-200 focus:ring-blue-600 shadow-sm"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả mục đích</Label>
-                  <Input 
+                  <Input
                     value={roleForm.description}
-                    onChange={e => setRoleForm(p => ({...p, description: e.target.value}))}
-                    placeholder="Quản lý lương, tài sản..." 
-                    className="h-11 rounded-xl border-slate-200 focus:ring-blue-600 shadow-sm" 
+                    onChange={e => setRoleForm(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Quản lý lương, tài sản..."
+                    className="h-11 rounded-xl border-slate-200 focus:ring-blue-600 shadow-sm"
                   />
                 </div>
               </div>
@@ -558,29 +558,28 @@ export function IAMCore({ user }: IAMCoreProps) {
                 </div>
 
                 <div className="relative">
-                   <Input 
-                    placeholder="Tìm kiếm chức năng (tên hoặc mã)..." 
+                  <Input
+                    placeholder="Tìm kiếm chức năng (tên hoặc mã)..."
                     value={functionSearchQuery}
                     onChange={e => setFunctionSearchQuery(e.target.value)}
                     className="h-9 rounded-lg border-slate-100 bg-slate-50/50 text-xs focus:ring-blue-500 px-9"
-                   />
-                   <Key className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                  />
+                  <Key className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredFunctions.map((fn) => (
-                    <div 
-                      key={fn.id} 
-                      onClick={() => toggleFunctionId(fn.id)}
+                    <div
+                      key={fn.id}
                       className={cn(
                         "flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer group",
-                        roleForm.functionIds.includes(fn.id) 
-                          ? "bg-blue-50/50 border-blue-200 shadow-sm shadow-blue-100/50" 
+                        roleForm.functionIds.includes(fn.id)
+                          ? "bg-blue-50/50 border-blue-200 shadow-sm shadow-blue-100/50"
                           : "bg-white border-slate-100 hover:border-slate-300"
                       )}
                     >
-                      <Checkbox 
-                        checked={roleForm.functionIds.includes(fn.id)} 
+                      <Checkbox
+                        checked={roleForm.functionIds.includes(fn.id)}
                         onCheckedChange={() => toggleFunctionId(fn.id)}
                         className="mt-1 border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                       />
@@ -600,21 +599,21 @@ export function IAMCore({ user }: IAMCoreProps) {
             </div>
 
             <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
-               <Button 
-                type="button" 
-                variant="ghost" 
-                className="rounded-xl h-11 font-bold flex-1 text-slate-500 hover:bg-slate-200" 
+              <Button
+                type="button"
+                variant="ghost"
+                className="rounded-xl h-11 font-bold flex-1 text-slate-500 hover:bg-slate-200"
                 onClick={() => setIsAddRoleOpen(false)}
-               >
-                 Hủy
-               </Button>
-               <Button 
+              >
+                Hủy
+              </Button>
+              <Button
                 type="submit"
                 disabled={isSubmitting}
                 className="bg-blue-600 hover:bg-blue-700 rounded-xl h-11 font-bold flex-[2] text-white shadow-lg shadow-blue-100"
-               >
-                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Xác nhận tạo vai trò'}
-               </Button>
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Xác nhận tạo vai trò'}
+              </Button>
             </div>
           </form>
         </DialogContent>
