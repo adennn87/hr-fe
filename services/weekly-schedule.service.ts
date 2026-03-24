@@ -200,6 +200,58 @@ export const weeklyScheduleService = {
   },
 
   /**
+   * Lấy danh sách lịch làm việc của tôi
+   * API endpoint: GET /weekly-schedules/me (không có /api prefix)
+   */
+  async getMyWeeklySchedule(): Promise<WeeklySchedule[]> {
+    try {
+      const baseUrl = API_URL.replace('/api', '');
+      const token = getAuthToken();
+      
+      const response = await fetch(`${baseUrl}/weekly-schedules/me`, {
+        method: 'GET',
+        headers: {
+          'accept': '/',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('accessToken');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('user');
+            document.cookie = 'access_token=; path=/; max-age=0';
+            window.location.href = '/login';
+          }
+          throw new Error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
+        }
+        
+        let errorMessage = `Error ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorData.errorMessage || errorMessage;
+        } catch (e) {
+          const text = await response.text().catch(() => '');
+          errorMessage = text || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching my weekly schedule:', error);
+      if (error.message && error.message.includes('Phiên làm việc hết hạn')) {
+        throw error;
+      }
+      throw new Error(error.message || 'Không thể tải lịch làm việc của tôi');
+    }
+  },
+
+  /**
    * Cập nhật các ngày trong lịch tuần
    * API endpoint: PATCH /weekly-schedules/:id
    */

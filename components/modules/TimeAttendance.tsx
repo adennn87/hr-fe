@@ -315,6 +315,30 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     }
   };
 
+  const fetchMyWeeklySchedule = async (requestGen?: number) => {
+    const isStale = () => requestGen != null && requestGen !== scheduleFetchGenRef.current;
+    setIsLoadingSchedule(true);
+    try {
+      const schedules = await weeklyScheduleService.getMyWeeklySchedule();
+      if (isStale()) return;
+      const current = pickCurrentWeekSchedule(schedules);
+      if (current) {
+        setScheduleBrowseAll([]);
+        setCurrentWeeklySchedule(current);
+        setWeekSchedule(formatScheduleForDisplay(current));
+      } else {
+        setCurrentWeeklySchedule(null);
+        setWeekSchedule([]);
+      }
+    } catch (error) {
+      console.error('Error fetching my schedule:', error);
+      setCurrentWeeklySchedule(null);
+      setWeekSchedule([]);
+    } finally {
+      if (!isStale()) setIsLoadingSchedule(false);
+    }
+  };
+
   const fetchAllSchedulesBrowse = async (requestGen?: number) => {
     const isStale = () => requestGen != null && requestGen !== scheduleFetchGenRef.current;
     setIsLoadingSchedule(true);
@@ -353,8 +377,13 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   useEffect(() => {
     if (activeTab !== 'schedule') return;
     const requestGen = ++scheduleFetchGenRef.current;
-    if (isAdmin && scheduleScope === 'all') fetchAllSchedulesBrowse(requestGen);
-    else fetchWeeklyScheduleForUser(viewingUserId || user.id, requestGen);
+    if (isAdmin && scheduleScope === 'all') {
+      fetchAllSchedulesBrowse(requestGen);
+    } else if (isAdmin && viewingUserId && viewingUserId !== user.id) {
+      fetchWeeklyScheduleForUser(viewingUserId, requestGen);
+    } else {
+      fetchMyWeeklySchedule(requestGen);
+    }
     return () => { scheduleFetchGenRef.current += 1; };
   }, [activeTab, user.id, viewingUserId, scheduleScope, isAdmin]);
 
@@ -432,7 +461,8 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       toast.success('Tạo lịch thành công');
       setIsCreateScheduleModalOpen(false);
       if (isAdmin && scheduleScope === 'all') fetchAllSchedulesBrowse();
-      else fetchWeeklyScheduleForUser(viewingUserId || user.id);
+      else if (isAdmin && viewingUserId && viewingUserId !== user.id) fetchWeeklyScheduleForUser(viewingUserId);
+      else fetchMyWeeklySchedule();
     } catch (error: any) {
       toast.error(error.message || 'Lỗi khi tạo lịch');
     } finally {
@@ -676,6 +706,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
 
       <Dialog open={isEditDayModalOpen} onOpenChange={setIsEditDayModalOpen}>
         <DialogContent className="max-w-md">
+<<<<<<< Updated upstream
           <DialogHeader><DialogTitle>Sửa ca làm việc</DialogTitle></DialogHeader>
           {editingDay && (
             <form onSubmit={async (e) => {
@@ -693,6 +724,27 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                 <div className="flex items-center gap-2">
                   <Checkbox checked={editingDay.isWorking} onCheckedChange={v => setEditingDay(p => p ? { ...p, isWorking: !!v } : p)} />
                   <Label className="text-sm">Làm việc</Label>
+=======
+           <DialogHeader><DialogTitle>Sửa ca làm việc</DialogTitle></DialogHeader>
+           {editingDay && (
+             <form onSubmit={async (e) => {
+               e.preventDefault();
+               if (!currentWeeklySchedule) return;
+               try {
+                 await weeklyScheduleService.updateWeeklyScheduleDays(currentWeeklySchedule.id, [editingDay]);
+                 toast.success('Cập nhật thành công');
+                 setIsEditDayModalOpen(false);
+                 if (isAdmin && viewingUserId && viewingUserId !== user.id) fetchWeeklyScheduleForUser(viewingUserId);
+                 else fetchMyWeeklySchedule();
+               } catch (err) { toast.error('Thất bại'); }
+             }} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold">{dayNames[editingDay.dayOfWeek === 7 ? 0 : editingDay.dayOfWeek]}</span>
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={editingDay.isWorking} onCheckedChange={v => setEditingDay(p => p ? {...p, isWorking: !!v} : p)} />
+                    <Label className="text-sm">Làm việc</Label>
+                  </div>
+>>>>>>> Stashed changes
                 </div>
               </div>
               {editingDay.isWorking && (
