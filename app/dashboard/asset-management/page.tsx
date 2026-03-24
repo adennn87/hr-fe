@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Laptop, Plus, Search, Filter, MoreHorizontal,
   Trash2, Pencil, CheckCircle2, XCircle,
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 
 export default function AssetManagementPage() {
   const { hasPermission, isAdmin } = usePermissions();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'inventory' | 'allocations'>('allocations');
   const [isLoading, setIsLoading] = useState(true);
   const [allocatedAssets, setAllocatedAssets] = useState<any[]>([]);
@@ -66,10 +68,17 @@ export default function AssetManagementPage() {
   };
 
   // Permission checks
-  const canViewAllocations = hasPermission('ASSET_ALLOCATE_VIEW');
-  const canViewInventory = hasPermission('ASSET_VIEW');
-  const canCreateAsset = hasPermission('ASSET_CREATE');
-  const canAllocate = hasPermission('ASSET_ALLOCATE_CREATE');
+  const canViewAllocations = isAdmin || hasPermission('ASSET_ALLOCATE_VIEW');
+  const canViewInventory = isAdmin || hasPermission('ASSET_VIEW');
+  const canCreateAsset = isAdmin || hasPermission('ASSET_CREATE');
+  const canAllocate = isAdmin || hasPermission('ASSET_ALLOCATE_CREATE');
+
+  // Redirect nếu không phải admin và không có ASSET_VIEW
+  useEffect(() => {
+    if (!isAdmin && !hasPermission('ASSET_VIEW')) {
+      router.replace('/dashboard');
+    }
+  }, [isAdmin, hasPermission, router]);
 
   useEffect(() => {
     if (canViewAllocations || canViewInventory) {
@@ -209,14 +218,10 @@ export default function AssetManagementPage() {
     }
   };
 
-  if (!canViewAllocations && !canViewInventory && !isAdmin) {
+  if (!isAdmin && !hasPermission('ASSET_VIEW')) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
-          <XCircle className="w-10 h-10 text-red-500" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900">Từ chối truy cập</h2>
-        <p className="text-slate-500 max-w-md">Bạn không có quyền quản lý tài sản. Vui lòng liên hệ Admin để được cấp quyền.</p>
+      <div className="flex h-64 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     );
   }

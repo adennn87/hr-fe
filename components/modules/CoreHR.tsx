@@ -61,7 +61,7 @@ const defaultEmployeeForm: EmployeeFormData = {
 
 
 export function CoreHR({ user, defaultTab }: CoreHRProps) {
-  const [activeTab, setActiveTab] = useState<CoreHRTab>(defaultTab || 'orgchart');
+  const [activeTab, setActiveTab] = useState<CoreHRTab>(defaultTab || 'profile');
   const [showSensitiveData, setShowSensitiveData] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,15 +79,30 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
   const [deptForm, setDeptForm] = useState({ code: '', name: '', description: '' });
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isAdmin } = usePermissions();
 
   // State quản lý việc đóng/mở danh sách nhân sự trong phòng ban
   const [expandedDepts, setExpandedDepts] = useState<string[]>([]);
 
-  // Fetch employees theo department từ API
+  // Kiểm tra quyền xem tổ chức (admin hoặc có USER_VIEW)
+  const canViewOrg = isAdmin || hasPermission('USER_VIEW');
+
+  // Kiểm tra quyền xem vai trò (admin hoặc có ROLE_VIEW)
+  const canViewRole = isAdmin || hasPermission('ROLE_VIEW');
+
+  // Nếu user có quyền và không có defaultTab được chỉ định thì mặc định vào tab orgchart
   useEffect(() => {
-    fetchEmployeesByDepartment();
-  }, []);
+    if (canViewOrg && !defaultTab) {
+      setActiveTab('orgchart');
+    }
+  }, [canViewOrg]);
+
+  // Fetch employees theo department từ API — chỉ khi có quyền
+  useEffect(() => {
+    if (canViewOrg) {
+      fetchEmployeesByDepartment();
+    }
+  }, [canViewOrg]);
 
   /**
    * Gộp danh sách phòng ban đầy đủ (GET /departments) với nhóm nhân sự theo phòng ban,
@@ -357,7 +372,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   }, [departmentsData]);
 
   const tabs: { id: CoreHRTab; label: string; icon: typeof Building2 }[] = [
-    { id: 'orgchart', label: 'Tổ chức', icon: Building2 },
+    ...(canViewOrg ? [{ id: 'orgchart' as CoreHRTab, label: 'Tổ chức', icon: Building2 }] : []),
     { id: 'profile', label: 'Hồ sơ', icon: User },
     { id: 'assets', label: 'Tài sản', icon: Laptop },
   ];
@@ -968,17 +983,19 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                   selectedEmployee.position || 'N/A'}
                           </p>
                         </div>
-                        <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Vai trò</div>
-                          <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.role && typeof selectedEmployee.role === 'object'
-                              ? selectedEmployee.role.name
-                              : (selectedEmployee.role || 'N/A')}
-                          </p>
-                          {selectedEmployee.role && typeof selectedEmployee.role === 'object' && selectedEmployee.role.description && (
-                            <p className="text-xs text-slate-500 mt-1">{selectedEmployee.role.description}</p>
-                          )}
-                        </div>
+                        {canViewRole && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Vai trò</div>
+                            <p className="text-base font-bold text-slate-900">
+                              {selectedEmployee.role && typeof selectedEmployee.role === 'object'
+                                ? selectedEmployee.role.name
+                                : (selectedEmployee.role || 'N/A')}
+                            </p>
+                            {selectedEmployee.role && typeof selectedEmployee.role === 'object' && selectedEmployee.role.description && (
+                              <p className="text-xs text-slate-500 mt-1">{selectedEmployee.role.description}</p>
+                            )}
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Trạng thái</div>
                           <p className="text-base font-bold text-slate-900">
@@ -1024,6 +1041,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         <th className="px-8 py-4">Nhân viên</th>
                         <th className="px-8 py-4">Phòng ban</th>
                         <th className="px-8 py-4">Chức vụ</th>
+                        {canViewRole && <th className="px-8 py-4">Vai trò</th>}
                         <th className="px-8 py-4 text-right">Hành động</th>
                       </tr>
                     </thead>
@@ -1045,11 +1063,13 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                 : emp.department || 'N/A'}
                             </span>
                           </td>
-                          <td className="px-8 py-5 text-sm font-medium text-slate-600">
-                            {typeof emp.role === 'object' && emp.role !== null
-                              ? emp.role.name
-                              : emp.role || 'N/A'}
-                          </td>
+                          {canViewRole && (
+                            <td className="px-8 py-5 text-sm font-medium text-slate-600">
+                              {typeof emp.role === 'object' && emp.role !== null
+                                ? emp.role.name
+                                : emp.role || 'N/A'}
+                            </td>
+                          )}
                           <td className="px-8 py-5 text-right">
                             <div className="flex justify-end gap-1">
                               {hasPermission('USER_UPDATE') && (
@@ -1269,7 +1289,9 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
               <FormField label="CCCD" value={employeeForm.citizen_Id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, citizen_Id: value }))} required />
               <FormField label="Phòng ban" value={employeeForm.department} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, department: value }))} required />
               <FormField label="Chức vụ" value={employeeForm.position} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, position: value }))} required />
-              <FormField label="Vai trò" value={employeeForm.role} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, role: value }))} required />
+              {canViewRole && (
+                <FormField label="Vai trò" value={employeeForm.role} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, role: value }))} required />
+              )}
               <FormField label="Địa chỉ" value={employeeForm.address} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, address: value }))} required />
               <FormField label="Mã số thuế" value={employeeForm.taxCode} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, taxCode: value }))} required />
               <FormField label="Trạng thái" value={employeeForm.status} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, status: value }))} required />

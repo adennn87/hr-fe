@@ -11,12 +11,12 @@ import { usePermissions } from '@/lib/use-permissions';
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan' },
   { href: '/dashboard/employees', label: 'Nhân sự', module: 'USER' },
-  { href: '/dashboard/rbac', label: 'Vai trò', module: 'ROLE' },
+  { href: '/dashboard/rbac', label: 'Vai trò', module: 'ROLE', permission: 'ROLE_VIEW' },
   { href: '/dashboard/attendance', label: 'Lịch làm việc', module: 'WEEKLY_SCHEDULE' },
   // { href: '/dashboard/timekeeping', label: 'Chấm công', module: 'TIMEKEEPING' },
   { href: '/dashboard/departments', label: 'Phòng ban', module: 'DEPARTMENT' },
   { href: '/dashboard/assets', label: 'Tài sản', module: 'ASSET' },
-  { href: '/dashboard/asset-management', label: 'Quản lý cấp phát', module: 'ASSET_ALLOCATE' },
+  { href: '/dashboard/asset-management', label: 'Quản lý cấp phát', module: 'ASSET_ALLOCATE', permission: 'ASSET_VIEW' },
   // { href: '/dashboard/leave-requests', label: 'Nghỉ phép', module: 'LEAVE_REQUEST' },
   // { href: '/dashboard/rbac', label: 'Access Manager', module: 'FUNCTION' },
   { href: '/dashboard/payroll', label: 'Lương thưởng', module: 'PAYROLL' },
@@ -27,10 +27,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const user = useStoredUser();
-  const { hasModuleAccess } = usePermissions();
+  const { hasModuleAccess, hasPermission } = usePermissions();
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.module) return true;
+    // Nếu có permission cụ thể thì check permission đó, không check module
+    if (item.permission) return hasPermission(item.permission);
     return hasModuleAccess(item.module);
   });
 
