@@ -183,18 +183,18 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     try {
       // Thử tìm employee từ dữ liệu đã có trước
       let employee: Employee | undefined = undefined;
-      
+
       // Tìm trong departmentsData (org chart)
       for (const group of departmentsData) {
         employee = group.users.find(u => u.id === employeeId);
         if (employee) break;
       }
-      
+
       // Nếu không tìm thấy, tìm trong allEmployees (profile tab)
       if (!employee) {
         employee = allEmployees.find(u => u.id === employeeId);
       }
-      
+
       // Nếu vẫn không tìm thấy, thử gọi API
       if (!employee) {
         try {
@@ -204,7 +204,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
           console.warn('API call failed, using cached data:', apiError);
         }
       }
-      
+
       if (employee) {
         setSelectedEmployee(employee);
         // Chuyển sang tab Profile khi xem chi tiết
@@ -231,7 +231,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       console.warn('No employeeId provided for fetching assets');
       return;
     }
-    
+
     setIsLoadingAssets(true);
     try {
       console.log('Fetching assets for employee:', employeeId);
@@ -239,7 +239,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       console.log('Fetched assets:', assets);
       console.log('Assets count:', assets?.length || 0);
       setAllocatedAssets(assets || []);
-      
+
       // Log để debug
       if (assets && assets.length > 0) {
         console.log('Assets data:', JSON.stringify(assets, null, 2));
@@ -250,7 +250,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       console.error('❌ Error fetching allocated assets:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      
+
       // Nếu là lỗi quyền, vẫn set empty array nhưng log warning
       if (error.message?.includes('quyền') || error.message?.includes('permission') || error.message?.includes('403')) {
         console.warn('⚠️ No permission to view assets, showing empty state');
@@ -331,11 +331,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     departmentsData.forEach((group, index) => {
       const deptName = group.department;
       const deptUsers = group.users;
-      
+
       // Tìm manager (ưu tiên Manager, sau đó CEO)
       const manager = deptUsers.find(u => u.position === 'Manager')?.fullName ||
-                      deptUsers.find(u => u.position === 'CEO')?.fullName ||
-                      'Chưa có';
+        deptUsers.find(u => u.position === 'CEO')?.fullName ||
+        'Chưa có';
 
       departments.push({
         id: String(index + 2),
@@ -366,7 +366,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
 
   // Fetch tất cả employees cho profile tab (nếu cần)
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-  
+
   const fetchAllEmployees = async () => {
     try {
       const data = await employeeService.getAllEmployees();
@@ -406,18 +406,18 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         setIsLoadingEmployeeDetail(true);
         try {
           let employee: Employee | undefined = undefined;
-          
+
           // Tìm trong departmentsData (org chart)
           for (const group of departmentsData) {
             employee = group.users.find(u => u.id === user.id);
             if (employee) break;
           }
-          
+
           // Nếu không tìm thấy, tìm trong allEmployees (profile tab)
           if (!employee) {
             employee = allEmployees.find(u => u.id === user.id);
           }
-          
+
           // Nếu vẫn không tìm thấy, thử gọi API
           if (!employee) {
             try {
@@ -426,7 +426,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
               console.warn('API call failed, using cached data:', apiError);
             }
           }
-          
+
           if (employee) {
             setSelectedEmployee(employee);
             // Fetch assets cho user này
@@ -440,7 +440,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
           setIsLoadingEmployeeDetail(false);
         }
       };
-      
+
       loadUserProfile();
     }
   }, [activeTab, user?.id, departmentsData, allEmployees]);
@@ -451,20 +451,20 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     if (!keyword) return employeeList;
     return employeeList.filter((emp) => {
       // Flatten department và role thành string để search
-      const deptStr = typeof emp.department === 'object' && emp.department !== null 
-        ? emp.department.name 
+      const deptStr = typeof emp.department === 'object' && emp.department !== null
+        ? emp.department.name
         : emp.department || '';
-      const roleStr = typeof emp.role === 'object' && emp.role !== null 
-        ? emp.role.name 
+      const roleStr = typeof emp.role === 'object' && emp.role !== null
+        ? emp.role.name
         : emp.role || '';
-      
+
       const searchValues = [
         emp.id,
         emp.fullName,
         deptStr,
         roleStr
       ].filter(Boolean); // Loại bỏ null/undefined
-      
+
       return searchValues.some((value) =>
         typeof value === 'string' && value.toLowerCase().includes(keyword)
       );
@@ -484,10 +484,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     const deptStr = typeof emp.department === 'object' && emp.department !== null
       ? emp.department.name
       : emp.department || '';
-    const roleStr = typeof emp.role === 'string' 
-      ? emp.role 
+    const roleStr = typeof emp.role === 'string'
+      ? emp.role
       : (emp.role && typeof emp.role === 'object' ? emp.role.name : '') || '';
-    
+
     const newForm = {
       ...defaultEmployeeForm,
       id: emp.id,
@@ -552,6 +552,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       setDeptForm({ code: '', name: '', description: '' });
       // Refresh data
       await fetchAllEmployees();
+      await fetchEmployeesByDepartment();
     } catch (error: any) {
       toast.error(error.message || 'Lỗi khi tạo phòng ban');
     }
@@ -606,14 +607,14 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     }
 
     try {
-    if (editingEmployeeId) {
+      if (editingEmployeeId) {
         await employeeService.updateEmployee(editingEmployeeId, payload);
         toast.success('Cập nhật nhân sự thành công');
-    } else {
+      } else {
         await employeeService.createEmployee(payload);
         toast.success('Tạo nhân sự mới thành công');
       }
-    setIsModalOpen(false);
+      setIsModalOpen(false);
       // Refresh data
       await fetchEmployeesByDepartment();
       if (activeTab === 'profile' && isSystemAdmin) {
@@ -681,7 +682,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
               <h3 className="text-lg font-bold text-slate-900">Sơ đồ tổ chức trực tuyến</h3>
               <div className="flex items-center gap-3">
                 {hasPermission('DEPARTMENT_CREATE') && (
-                  <Button 
+                  <Button
                     onClick={() => setIsDeptModalOpen(true)}
                     className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
                   >
@@ -706,9 +707,9 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 <p className="text-slate-500 text-sm">Sơ đồ tổ chức sẽ được hiển thị khi có dữ liệu nhân sự.</p>
               </div>
             ) : (
-            <div className="grid gap-4">
-              {orgChart.map((dept) => {
-                const isExpanded = expandedDepts.includes(dept.id);
+              <div className="grid gap-4">
+                {orgChart.map((dept) => {
+                  const isExpanded = expandedDepts.includes(dept.id);
                   // Lấy employees từ departmentsData
                   let deptEmps: Employee[] = [];
                   if (dept.deptKey === 'CEO') {
@@ -723,112 +724,112 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                     deptEmps = group ? group.users : [];
                   }
 
-                return (
-                  <div key={dept.id} style={{ marginLeft: `${dept.level * 2}rem` }} className="space-y-3">
-                    <div
-                      onClick={() => toggleDept(dept.id)}
-                      className={`group flex items-center justify-between p-5 bg-white border rounded-[20px] transition-all cursor-pointer ${isExpanded ? 'border-purple-400 shadow-lg shadow-purple-50 ring-1 ring-purple-100' : 'border-slate-100 hover:border-purple-200 hover:shadow-md'
-                        }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${dept.level === 0 || isExpanded ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'bg-slate-50 text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600'
-                          }`}>
-                          <Building2 className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-900">{dept.name}</h4>
-                          <p className="text-xs text-slate-500 font-medium">
-                            Quản lý: <span className="text-slate-900">{dept.manager}</span> • {dept.employees} nhân sự
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`p-2 rounded-full transition-all ${isExpanded ? 'bg-purple-50 text-purple-600 rotate-90' : 'text-slate-300'}`}>
-                        <ChevronRight className="w-5 h-5" />
-                      </div>
-                    </div>
-
-                    {/* Danh sách nhân sự chi tiết khi mở rộng */}
-                    {isExpanded && (
-                      <div className="ml-6 border-l-2 border-purple-100 pl-6 space-y-2 animate-in slide-in-from-top-2 duration-300">
-                        {isLoadingEmployees ? (
-                          <div className="p-4 flex items-center gap-2 text-slate-400">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-xs">Đang tải...</span>
+                  return (
+                    <div key={dept.id} style={{ marginLeft: `${dept.level * 2}rem` }} className="space-y-3">
+                      <div
+                        onClick={() => toggleDept(dept.id)}
+                        className={`group flex items-center justify-between p-5 bg-white border rounded-[20px] transition-all cursor-pointer ${isExpanded ? 'border-purple-400 shadow-lg shadow-purple-50 ring-1 ring-purple-100' : 'border-slate-100 hover:border-purple-200 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${dept.level === 0 || isExpanded ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'bg-slate-50 text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600'
+                            }`}>
+                            <Building2 className="w-6 h-6" />
                           </div>
-                        ) : deptEmps.length > 0 ? deptEmps.map(emp => (
-                          <div 
-                            key={emp.id} 
-                            onClick={() => handleViewEmployee(emp.id)}
-                            className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-purple-200 hover:bg-white transition-all group cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 bg-white border border-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm">
-                                {(() => {
-                                  const name = emp.fullName || emp.email || '';
-                                  const parts = name.split(' ').filter(Boolean);
-                                  const lastPart = parts.length > 0 ? parts[parts.length - 1] : '';
-                                  return lastPart && lastPart.length > 0 ? lastPart.charAt(0).toUpperCase() : 'U';
-                                })()}
+                          <div>
+                            <h4 className="font-bold text-slate-900">{dept.name}</h4>
+                            <p className="text-xs text-slate-500 font-medium">
+                              Quản lý: <span className="text-slate-900">{dept.manager}</span> • {dept.employees} nhân sự
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`p-2 rounded-full transition-all ${isExpanded ? 'bg-purple-50 text-purple-600 rotate-90' : 'text-slate-300'}`}>
+                          <ChevronRight className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      {/* Danh sách nhân sự chi tiết khi mở rộng */}
+                      {isExpanded && (
+                        <div className="ml-6 border-l-2 border-purple-100 pl-6 space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          {isLoadingEmployees ? (
+                            <div className="p-4 flex items-center gap-2 text-slate-400">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-xs">Đang tải...</span>
+                            </div>
+                          ) : deptEmps.length > 0 ? deptEmps.map(emp => (
+                            <div
+                              key={emp.id}
+                              onClick={() => handleViewEmployee(emp.id)}
+                              className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-purple-200 hover:bg-white transition-all group cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-white border border-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm">
+                                  {(() => {
+                                    const name = emp.fullName || emp.email || '';
+                                    const parts = name.split(' ').filter(Boolean);
+                                    const lastPart = parts.length > 0 ? parts[parts.length - 1] : '';
+                                    return lastPart && lastPart.length > 0 ? lastPart.charAt(0).toUpperCase() : 'U';
+                                  })()}
+                                </div>
+                                <div>
+                                  <div className="text-sm font-bold text-slate-800 group-hover:text-purple-700">{emp.fullName || 'N/A'}</div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                                    {emp.position === 'Manager' ? 'QUẢN LÝ' : emp.position === 'CEO' ? 'CEO' : (emp.position || 'EMPLOYEE')}
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <div className="text-sm font-bold text-slate-800 group-hover:text-purple-700">{emp.fullName || 'N/A'}</div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                                  {emp.position === 'Manager' ? 'QUẢN LÝ' : emp.position === 'CEO' ? 'CEO' : (emp.position || 'EMPLOYEE')}
+                              <div className="flex items-center gap-4">
+                                <div className="hidden md:flex flex-col items-end">
+                                  <span className="text-[10px] font-mono text-slate-400">{emp.email || 'N/A'}</span>
+                                  <span className="text-[10px] font-bold text-slate-500">{emp.id}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {hasPermission('USER_UPDATE') && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditModal(emp);
+                                      }}
+                                      className="p-2 hover:bg-purple-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
+                                      title="Chỉnh sửa nhân sự"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {hasPermission('USER_DELETE') && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteEmployee(emp.id);
+                                      }}
+                                      className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
+                                      title="Xóa nhân sự"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewEmployee(emp.id);
+                                    }}
+                                    className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors"
+                                    title="Xem chi tiết"
+                                  >
+                                    <ChevronRight className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className="hidden md:flex flex-col items-end">
-                                <span className="text-[10px] font-mono text-slate-400">{emp.email || 'N/A'}</span>
-                                <span className="text-[10px] font-bold text-slate-500">{emp.id}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {hasPermission('USER_UPDATE') && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditModal(emp);
-                                    }}
-                                    className="p-2 hover:bg-purple-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
-                                    title="Chỉnh sửa nhân sự"
-                                  >
-                                    <Pencil className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {hasPermission('USER_DELETE') && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteEmployee(emp.id);
-                                    }}
-                                    className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
-                                    title="Xóa nhân sự"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewEmployee(emp.id);
-                                  }}
-                                  className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors"
-                                  title="Xem chi tiết"
-                                >
-                                  <ChevronRight className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )) : (
-                          <div className="p-4 text-xs text-slate-400 italic bg-slate-50/50 rounded-xl">Chưa có nhân sự trong phòng ban này</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                          )) : (
+                            <div className="p-4 text-xs text-slate-400 italic bg-slate-50/50 rounded-xl">Chưa có nhân sự trong phòng ban này</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
@@ -847,10 +848,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 ) : (
                   <>
                     <div className="absolute top-0 right-0 p-8 flex items-center gap-4">
-                      <button 
+                      <button
                         onClick={() => {
                           setShowSensitiveData(!showSensitiveData);
-                        }} 
+                        }}
                         className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-purple-600 transition-all uppercase tracking-widest"
                       >
                         {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -859,7 +860,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                     </div>
 
                     <div className="flex items-start gap-6 mb-8">
-                          <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg">
+                      <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg">
                         {(() => {
                           const name = selectedEmployee.fullName || selectedEmployee.email || '';
                           const parts = name.split(' ').filter(Boolean);
@@ -869,11 +870,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-2xl font-black text-slate-900 mb-2">
-                          {selectedEmployee.position === 'Manager' ? 'Quản lý' : 
-                           selectedEmployee.position === 'CEO' ? 'CEO' : 
-                           selectedEmployee.position || 
-                           (typeof selectedEmployee.role === 'string' ? selectedEmployee.role : selectedEmployee.role?.name) || 
-                           'Nhân viên'}
+                          {selectedEmployee.position === 'Manager' ? 'Quản lý' :
+                            selectedEmployee.position === 'CEO' ? 'CEO' :
+                              selectedEmployee.position ||
+                              (typeof selectedEmployee.role === 'string' ? selectedEmployee.role : selectedEmployee.role?.name) ||
+                              'Nhân viên'}
                         </h3>
                         <p className="text-slate-500 text-sm">{selectedEmployee.fullName}</p>
                       </div>
@@ -950,8 +951,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Phòng ban</div>
                           <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.department && typeof selectedEmployee.department === 'object' 
-                              ? selectedEmployee.department.name 
+                            {selectedEmployee.department && typeof selectedEmployee.department === 'object'
+                              ? selectedEmployee.department.name
                               : (selectedEmployee.department || 'N/A')}
                           </p>
                           {selectedEmployee.department && typeof selectedEmployee.department === 'object' && selectedEmployee.department.description && (
@@ -961,17 +962,17 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Chức vụ</div>
                           <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.position === 'Manager' ? 'Quản lý' : 
-                             selectedEmployee.position === 'CEO' ? 'CEO' : 
-                             selectedEmployee.position === 'Employee' ? 'Nhân viên' :
-                             selectedEmployee.position || 'N/A'}
+                            {selectedEmployee.position === 'Manager' ? 'Quản lý' :
+                              selectedEmployee.position === 'CEO' ? 'CEO' :
+                                selectedEmployee.position === 'Employee' ? 'Nhân viên' :
+                                  selectedEmployee.position || 'N/A'}
                           </p>
                         </div>
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Vai trò</div>
                           <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.role && typeof selectedEmployee.role === 'object' 
-                              ? selectedEmployee.role.name 
+                            {selectedEmployee.role && typeof selectedEmployee.role === 'object'
+                              ? selectedEmployee.role.name
                               : (selectedEmployee.role || 'N/A')}
                           </p>
                           {selectedEmployee.role && typeof selectedEmployee.role === 'object' && selectedEmployee.role.description && (
@@ -981,11 +982,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Trạng thái</div>
                           <p className="text-base font-bold text-slate-900">
-                            <span className={`px-3 py-1 rounded-lg text-xs font-black ${
-                              selectedEmployee.status === 'Active' || selectedEmployee.isActive
+                            <span className={`px-3 py-1 rounded-lg text-xs font-black ${selectedEmployee.status === 'Active' || selectedEmployee.isActive
                                 ? 'bg-emerald-50 text-emerald-600'
                                 : 'bg-slate-100 text-slate-600'
-                            }`}>
+                              }`}>
                               {selectedEmployee.status || (selectedEmployee.isActive ? 'Active' : 'Inactive')}
                             </span>
                           </p>
@@ -1029,8 +1029,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {filteredEmployees.map((emp) => (
-                        <tr 
-                          key={emp.id} 
+                        <tr
+                          key={emp.id}
                           onClick={() => handleViewEmployee(emp.id)}
                           className="hover:bg-slate-50/30 transition-colors group cursor-pointer"
                         >
@@ -1143,8 +1143,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-bold text-slate-900">
-                {selectedEmployee 
-                  ? `Thiết bị được cấp phát - ${selectedEmployee.fullName}` 
+                {selectedEmployee
+                  ? `Thiết bị được cấp phát - ${selectedEmployee.fullName}`
                   : `Thiết bị được cấp phát - ${user.fullName || user.email}`}
               </h3>
               {!selectedEmployee && (
@@ -1166,8 +1166,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                     </div>
                     <h4 className="text-lg font-bold text-slate-900 mb-2">Chưa có tài sản được cấp phát</h4>
                     <p className="text-slate-500 text-sm">
-                      {selectedEmployee 
-                        ? 'Nhân viên này chưa được cấp phát thiết bị nào.' 
+                      {selectedEmployee
+                        ? 'Nhân viên này chưa được cấp phát thiết bị nào.'
                         : 'Bạn chưa được cấp phát thiết bị nào.'}
                     </p>
                     <p className="text-xs text-slate-400 mt-2">
@@ -1175,31 +1175,31 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                     </p>
                   </div>
                 ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {allocatedAssets.map((allocatedAsset) => {
                       const asset = allocatedAsset.asset;
-                      const statusColor = allocatedAsset.status === 'allocated' 
-                        ? 'bg-emerald-50 text-emerald-600' 
+                      const statusColor = allocatedAsset.status === 'allocated'
+                        ? 'bg-emerald-50 text-emerald-600'
                         : allocatedAsset.status === 'returned'
-                        ? 'bg-slate-100 text-slate-600'
-                        : 'bg-amber-50 text-amber-600';
-                      
-                      const statusText = allocatedAsset.status === 'allocated' 
-                        ? 'Đang sử dụng' 
+                          ? 'bg-slate-100 text-slate-600'
+                          : 'bg-amber-50 text-amber-600';
+
+                      const statusText = allocatedAsset.status === 'allocated'
+                        ? 'Đang sử dụng'
                         : allocatedAsset.status === 'returned'
-                        ? 'Đã trả lại'
-                        : allocatedAsset.status;
+                          ? 'Đã trả lại'
+                          : allocatedAsset.status;
 
                       return (
                         <div key={allocatedAsset.id} className="bg-white border border-slate-200 rounded-[24px] p-6 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-inner">
-                      <Laptop className="w-6 h-6" />
-                    </div>
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-inner">
+                              <Laptop className="w-6 h-6" />
+                            </div>
                             <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${statusColor}`}>
                               {statusText}
                             </span>
-                  </div>
+                          </div>
                           <h4 className="font-black text-slate-900 text-lg mb-1">{asset.name}</h4>
                           <p className="text-xs font-mono text-slate-400 mb-2">SN: {asset.serialNumber}</p>
                           <p className="text-xs text-slate-500 mb-1">
@@ -1213,7 +1213,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           </p>
                           <div className="space-y-2 border-t border-slate-50 pt-4">
                             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                    <span>Cấp ngày</span>
+                              <span>Cấp ngày</span>
                               <span className="text-slate-900">
                                 {allocatedAsset.allocatedDate ? new Date(allocatedAsset.allocatedDate).toLocaleDateString('vi-VN') : 'N/A'}
                               </span>
@@ -1245,7 +1245,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 </div>
                 <h4 className="text-lg font-bold text-slate-900 mb-2">Không thể tải tài sản</h4>
                 <p className="text-slate-500 text-sm">Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.</p>
-            </div>
+              </div>
             )}
           </div>
         )}
@@ -1293,8 +1293,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         </div>
       )}
 
-      <DeptModal 
-        isOpen={isDeptModalOpen} 
+      <DeptModal
+        isOpen={isDeptModalOpen}
         onClose={() => setIsDeptModalOpen(false)}
         form={deptForm}
         setForm={setDeptForm}
@@ -1338,15 +1338,15 @@ function FormField({
   );
 }
 
-function DeptModal({ 
-  isOpen, 
-  onClose, 
-  form, 
-  setForm, 
-  onSubmit 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
+function DeptModal({
+  isOpen,
+  onClose,
+  form,
+  setForm,
+  onSubmit
+}: {
+  isOpen: boolean;
+  onClose: () => void;
   form: { code: string; name: string; description: string };
   setForm: React.Dispatch<React.SetStateAction<{ code: string; name: string; description: string }>>;
   onSubmit: (e: React.FormEvent) => void;
@@ -1363,19 +1363,19 @@ function DeptModal({
           </button>
         </div>
         <form onSubmit={onSubmit} className="p-6 space-y-4">
-          <FormField 
-            label="Mã phòng ban" 
-            value={form.code} 
-            onChange={(val) => setForm(prev => ({ ...prev, code: val }))} 
-            placeholder="Ví dụ: IT, HR, MKT..." 
-            required 
+          <FormField
+            label="Mã phòng ban"
+            value={form.code}
+            onChange={(val) => setForm(prev => ({ ...prev, code: val }))}
+            placeholder="Ví dụ: IT, HR, MKT..."
+            required
           />
-          <FormField 
-            label="Tên phòng ban" 
-            value={form.name} 
-            onChange={(val) => setForm(prev => ({ ...prev, name: val }))} 
-            placeholder="Ví dụ: Công nghệ thông tin..." 
-            required 
+          <FormField
+            label="Tên phòng ban"
+            value={form.name}
+            onChange={(val) => setForm(prev => ({ ...prev, name: val }))}
+            placeholder="Ví dụ: Công nghệ thông tin..."
+            required
           />
           <label className="flex flex-col gap-2">
             <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả</span>
@@ -1387,15 +1387,15 @@ function DeptModal({
             />
           </label>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <button 
-              type="button" 
-              onClick={onClose} 
+            <button
+              type="button"
+              onClick={onClose}
               className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"
             >
               Hủy
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-200"
             >
               Tạo mới
