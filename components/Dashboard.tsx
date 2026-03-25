@@ -8,19 +8,25 @@ import { CompensationBenefits } from './modules/CompensationBenefits';
 import { TimeAttendance } from './modules/TimeAttendance';
 import { User, SecurityContextData } from '@/lib/auth-types';
 import { getJwtRoleInfo, isAdminRoleId, normalizeRoleId } from '@/lib/role-utils';
+import { usePermissions } from '@/lib/use-permissions';
 
 interface DashboardProps {
   user: User;
   securityContext: SecurityContextData;
 }
-
 type ModuleType = 'overview' | 'iam' | 'coreHR' | 'compensation' | 'time' | 'ats' | 'admin';
 
 export function Dashboard({ user, securityContext }: DashboardProps) {
+  const { hasPermission, isAdmin } = usePermissions();
+
+  const canViewIAM = isAdmin || hasPermission('ROLE_VIEW');
+
   const [activeModule, setActiveModule] = useState<ModuleType>('overview');
   const router = useRouter();
   const fullName = (user.fullName || (user as any).full_name || '').trim();
   const displayName = fullName || user.email?.split('@')[0] || 'User';
+
+
 
   const modules = [
     {
@@ -45,7 +51,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
       description: 'C&B - Khu vực rủi ro cao',
       icon: DollarSign,
       color: 'green',
-      roles: ['System Admin','Accountant',  'HR Manager', 'Employee']
+      roles: ['System Admin', 'Accountant', 'HR Manager', 'Employee']
     },
     {
       id: 'time' as ModuleType,
@@ -55,8 +61,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
       color: 'orange',
       roles: ['System Admin', 'HR Manager', 'Employee']
     },
-
-  ];
+  ].filter(m => m.id !== 'iam' || canViewIAM);
 
   // Helper function để normalize role name
   const normalizeRole = (role: any): string => {
@@ -85,28 +90,28 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
   };
 
   const accessibleModules = modules.filter(module =>
-    hasAccess(module.roles, user.role)
+    module.roles ? hasAccess(module.roles, user.role) : true
   );
 
   // isAdmin được tính trên client sau khi hydrate để tránh hydration mismatch
-  const [isAdmin, setIsAdmin] = useState(false);
+  // const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    try {
-      const jwtRole = getJwtRoleInfo();
-      if (jwtRole.roleId) {
-        setIsAdmin(isAdminRoleId(jwtRole.roleId));
-        return;
-      }
+  // useEffect(() => {
+  //   try {
+  //     const jwtRole = getJwtRoleInfo();
+  //     if (jwtRole.roleId) {
+  //       setIsAdmin(isAdminRoleId(jwtRole.roleId));
+  //       return;
+  //     }
 
-      // Fallback: user.role có thể đang là roleId UUID
-      const fallbackRoleId = normalizeRoleId(user.role);
-      setIsAdmin(isAdminRoleId(fallbackRoleId));
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      setIsAdmin(false);
-    }
-  }, [user.role]);
+  //     // Fallback: user.role có thể đang là roleId UUID
+  //     const fallbackRoleId = normalizeRoleId(user.role);
+  //     setIsAdmin(isAdminRoleId(fallbackRoleId));
+  //   } catch (error) {
+  //     console.error('Error checking admin status:', error);
+  //     setIsAdmin(false);
+  //   }
+  // }, [user.role]);
 
   // Nếu không có module nào match, hiển thị tất cả (fallback)
   // Hoặc có thể hiển thị message cảnh báo
@@ -131,7 +136,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
         return <CompensationBenefits user={user} />;
       case 'time':
         return <TimeAttendance user={user} />;
-      default:  
+      default:
         return (
           <div className="space-y-6">
             <div>
@@ -222,7 +227,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
                     }
                   };
                   const colors = colorClasses[module.color as keyof typeof colorClasses] || colorClasses.blue;
-                  
+
                   return (
                     <button
                       key={module.id}
