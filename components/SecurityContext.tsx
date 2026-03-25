@@ -90,93 +90,66 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
 
           {/* Right: User Menu */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
-            >
-              {hasAvatar ? (
-                <img
-                  src={user.avatar}
-                  alt={safeUserName}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
-                  {userInitial}
+            <div className="relative">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                onBlur={() => setTimeout(() => setShowDetails(false), 200)}
+                className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
+              >
+                {hasAvatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={safeUserName}
+                    className="w-8 h-8 rounded-full"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                    {userInitial}
+                  </div>
+                )}
+                <div className="text-left">
+                  <div className="text-sm font-medium text-gray-900">{safeUserName}</div>
+                  <div className="text-xs text-gray-500">
+                    {typeof user.role === 'object' ? user.role.name : user.role}
+                  </div>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showDetails && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-100 z-50">
+                  <button
+                    onClick={handleFetchProfile}
+                    disabled={loadingProfile}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    {loadingProfile ? 'Đang tải...' : 'Xem hồ sơ'}
+                  </button>
+                  <div className="h-px bg-gray-100 my-1 mx-2" />
+                  <button
+                    onClick={() => {
+                      setShowDetails(false);
+                      onLogout();
+                    }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Đăng xuất
+                  </button>
                 </div>
               )}
-              <div className="text-left">
-                <div className="text-sm font-medium text-gray-900">{safeUserName}</div>
-                <div className="text-xs text-gray-500">
-                  {typeof user.role === 'object' ? user.role.name : user.role}
-                </div>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-            </button>
+            </div>
 
-            <button
-              onClick={handleFetchProfile}
-              disabled={loadingProfile}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-            >
-              <UserIcon className="w-4 h-4" />
-              {loadingProfile ? 'Đang tải...' : 'Hồ sơ'}
-            </button>
-
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Đăng xuất
-            </button>
-
-            <ProfileModal 
-              isOpen={isProfileOpen} 
-              onClose={() => setIsProfileOpen(false)} 
-              profile={fullProfile} 
+            <ProfileModal
+              isOpen={isProfileOpen}
+              onClose={() => setIsProfileOpen(false)}
+              profile={fullProfile}
               onUpdate={handleFetchProfile}
             />
           </div>
         </div>
-
-        {/* Security Details Dropdown */}
-        {showDetails && (
-          <div className="border-t border-gray-200 py-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-gray-500">Vị trí</p>
-                  <p className="text-sm font-medium text-gray-900">{context.location}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Monitor className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-gray-500">Thiết bị</p>
-                  <p className="text-sm font-medium text-gray-900">{context.deviceType}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-gray-500">Xác thực lần cuối</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {new Date(context.lastAuth).toLocaleTimeString('vi-VN')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-gray-500">IP Address</p>
-                  <p className="text-sm font-medium text-gray-900">{context.ipAddress}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
