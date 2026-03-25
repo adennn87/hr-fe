@@ -29,6 +29,8 @@ import { departmentService, Department as APIDepartment } from "@/services/depar
 import { roleService, type RoleOption } from "@/services/role.service";
 import { RecaptchaWidget, type RecaptchaHandle } from "@/components/auth/RecaptchaWidget";
 import { requireRecaptchaToken } from "@/lib/recaptcha-config";
+import AdjustmentSelector from "../ui/AdjustmentSelector";
+import { adjustmentService } from "@/services/adjustment.service";
 
 // --- 1. SCHEMA VALIDATION ---
 const registerSchema = z
@@ -78,6 +80,16 @@ const registerSchema = z
     confirmPassword: z.string(),
     roleId: z.string().min(1, "Vui lòng chọn role"),
     salaryPerDay: z.number().min(0, "Lương không hợp lệ"),
+
+    adjustments: z
+  .array(
+    z.object({
+      typeId: z.string(),
+      amount: z.number(),
+      note: z.string().optional(),
+    })
+  )
+  .optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Mật khẩu không khớp",
@@ -100,23 +112,35 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema) as any,
-    defaultValues: {
-      gender: Gender.MALE,
-      department: "",
-      position: Position.Employee,
-      taxCode: "",
-      roleId: "",
-      salaryPerDay: 0,
-    },
-  });
+  type AdjustmentType = {
+    id: string;
+    name: string;
+    type: "ADD" | "DEDUCT";
+  };
+
+  const [adjustmentTypes, setAdjustmentTypes] = useState<AdjustmentType[]>([]);
+
+const {
+  register,
+  handleSubmit,
+  setValue,
+  watch,
+  formState: { errors },
+} = useForm<RegisterFormValues>({
+  resolver: zodResolver(registerSchema) as any,
+  defaultValues: {
+    gender: Gender.MALE,
+    department: "",
+    position: Position.Employee,
+    taxCode: "",
+    roleId: "",
+    salaryPerDay: 0,
+    adjustments: [],
+  },
+});
+
+// Lấy adjustments từ form
+const adjustments = watch("adjustments") || [];
 
   // Fetch departments from API on mount
   useEffect(() => {
@@ -148,6 +172,19 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
       }
     };
     fetchRoles();
+  }, []);
+
+  useEffect(() => {
+    const fetchAdjustmentTypes = async () => {
+      try {
+        const data = await adjustmentService.getAdjustmentTypes();
+        setAdjustmentTypes(data);
+      } catch (err) {
+        console.error("Failed to fetch adjustment types", err);
+      }
+    };
+
+    fetchAdjustmentTypes();
   }, []);
 
   const passwordValue = watch("password", "");
@@ -265,7 +302,7 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               <Label>
                 Date of Birth <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">  
+              <div className="relative">
                 <Input
                   {...register("dateOfBirth")}
                   type="date"
@@ -321,9 +358,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               <select
                 {...register("roleId")}
                 disabled={rolesLoading}
-                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${
-                  errors.roleId ? "border-red-500" : "border-slate-200"
-                }`}
+                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${errors.roleId ? "border-red-500" : "border-slate-200"
+                  }`}
               >
                 <option value="">
                   {rolesLoading ? "Đang tải role..." : "Chọn role"}
@@ -346,9 +382,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
               <select
                 {...register("department")}
                 disabled={departmentsLoading}
-                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${
-                  errors.department ? "border-red-500" : "border-slate-200"
-                }`}
+                className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${errors.department ? "border-red-500" : "border-slate-200"
+                  }`}
               >
                 <option value="">
                   {departmentsLoading ? "Đang tải phòng ban..." : "Chọn phòng ban"}
@@ -374,9 +409,8 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
                 <select
                   {...register("position")}
                   disabled={!selectedDepartmentId}
-                  className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${
-                    errors.position ? "border-red-500" : "border-slate-200"
-                  }`}
+                  className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 ${errors.position ? "border-red-500" : "border-slate-200"
+                    }`}
                 >
                   {!selectedDepartmentId ? (
                     <option value="">Chọn phòng ban trước</option>
@@ -420,6 +454,28 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
             </div>
           </div>
         </div>
+
+
+<AdjustmentSelector
+  adjustmentTypes={adjustmentTypes}
+  value={(watch("adjustments") || []).map(a => {
+    const adjType = adjustmentTypes.find(t => t.id === a.typeId);
+    return {
+      ...a,
+      name: adjType?.name || "",
+      type: adjType?.type || "ADD",
+    };
+  })}
+  onChange={(data) =>
+    setValue(
+      "adjustments",
+      data.map(({ typeId, amount, note }) => ({ typeId, amount, note })),
+      { shouldValidate: true, shouldDirty: true }
+    )
+  }
+/>
+
+
 
         {/* SECTION 2: CONTACT INFO */}
         <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
@@ -520,11 +576,10 @@ export function RegisterForm({ onBack }: RegisterFormProps) {
                   return (
                     <span
                       key={i}
-                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
-                        isMet
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${isMet
                           ? "bg-emerald-100 border-emerald-200 text-emerald-700 font-bold"
                           : "bg-slate-100 border-slate-200 text-slate-400"
-                      }`}
+                        }`}
                     >
                       {req.label} {isMet && "✓"}
                     </span>

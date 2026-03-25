@@ -2,6 +2,12 @@ import { fetchClient, API_URL } from '@/lib/api';
 import { RegisterFormValues } from '@/components/auth/RegisterForm';
 import { UserProfile } from '@/types/types';
 
+export interface AdjustmentPayload {
+  typeId: string;
+  amount: number;
+  note?: string;
+}
+
 export interface RegisterPayload {
   fullName: string;
   email: string;
@@ -17,6 +23,7 @@ export interface RegisterPayload {
   mfaEnabled?: boolean;
   taxCode?: string; // Thêm trường taxCode tùy chọn
   salaryPerDay?: number;
+  adjustments?: AdjustmentPayload[];
 }
 
 // Định nghĩa kiểu dữ liệu trả về từ API Login
@@ -108,6 +115,11 @@ export const authService = {
       taxCode: data.taxCode || undefined, // Gửi taxCode nếu có
       roleId: (data as any).roleId || undefined,
       salaryPerDay: data.salaryPerDay,
+      adjustments: data.adjustments?.map(a => ({
+    typeId: a.typeId,
+    amount: a.amount,
+    note: a.note || "",
+  })) || [], // nếu chưa có thì gửi mảng rỗng
     };
 
     const body: Record<string, unknown> = { ...payload };
