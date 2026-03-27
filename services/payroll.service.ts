@@ -385,6 +385,32 @@ export const payrollService = {
   },
 
   /**
+   * Tải phiếu lương PDF của một nhân viên theo tháng.
+   * Endpoint: GET /payroll/pdf?userId=&month=
+   * Trả về Blob PDF.
+   */
+  async downloadPayrollPdf(userId: string, month: string | number): Promise<Blob> {
+    const baseUrl = API_URL.replace('/api', '');
+    const token = getAuthToken();
+    const url = `${baseUrl}/payroll/pdf?userId=${encodeURIComponent(userId)}&month=${encodeURIComponent(String(month))}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: '*/*',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Không thể tải phiếu lương PDF (${response.status})${text ? ': ' + text : ''}`);
+    }
+
+    return response.blob();
+  },
+
+  /**
    * Tính lương cho tất cả nhân viên trong tháng.
    * Sử dụng endpoint mới: POST /payroll/generate
    */

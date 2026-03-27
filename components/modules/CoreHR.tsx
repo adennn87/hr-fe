@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import type { User as UserType } from '@/lib/auth-types';
 import { employeeService, type Employee } from '@/services/employee.service';
-import { departmentService } from '@/services/department.service';
+import { departmentService, type Department } from '@/services/department.service';
 import { assetService, type AllocatedAsset } from '@/services/asset.service';
 import { toast } from 'sonner';
 import { usePermissions } from '@/lib/use-permissions';
@@ -79,6 +79,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
   const [deptForm, setDeptForm] = useState({ code: '', name: '', description: '' });
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [editDeptForm, setEditDeptForm] = useState({ code: '', name: '', description: '' });
+  const [isUpdatingDept, setIsUpdatingDept] = useState(false);
   const { hasPermission, isAdmin } = usePermissions();
 
   // State quản lý việc đóng/mở danh sách nhân sự trong phòng ban
@@ -113,6 +117,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   ): Promise<Array<{ department: string; users: Employee[] }>> => {
     try {
       const allDepts = await departmentService.getDepartments();
+      setAllDepartments(allDepts);
       if (!allDepts.length) return grouped;
 
       const byName = new Map<string, Employee[]>();
@@ -553,6 +558,26 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     }
   };
 
+  const handleUpdateDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDept) return;
+    if (!hasPermission('DEPARTMENT_UPDATE')) {
+      toast.error('Bạn không có quyền cập nhật phòng ban');
+      return;
+    }
+    setIsUpdatingDept(true);
+    try {
+      await departmentService.updateDepartment(editingDept.id, editDeptForm);
+      toast.success('Cập nhật phòng ban thành công');
+      setEditingDept(null);
+      await fetchEmployeesByDepartment();
+    } catch (error: any) {
+      toast.error(error.message || 'Lỗi khi cập nhật phòng ban');
+    } finally {
+      setIsUpdatingDept(false);
+    }
+  };
+
   const handleCreateDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasPermission('DEPARTMENT_CREATE')) {
@@ -758,8 +783,26 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                             </p>
                           </div>
                         </div>
-                        <div className={`p-2 rounded-full transition-all ${isExpanded ? 'bg-purple-50 text-purple-600 rotate-90' : 'text-slate-300'}`}>
-                          <ChevronRight className="w-5 h-5" />
+                        <div className="flex items-center gap-1">
+                          {hasPermission('DEPARTMENT_UPDATE') && (() => {
+                            const fullDept = allDepartments.find(d => d.name === dept.deptKey);
+                            return fullDept ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingDept(fullDept);
+                                  setEditDeptForm({ code: fullDept.code, name: fullDept.name, description: fullDept.description || '' });
+                                }}
+                                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Chỉnh sửa phòng ban"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            ) : null;
+                          })()}
+                          <div className={`p-2 rounded-full transition-all ${isExpanded ? 'bg-purple-50 text-purple-600 rotate-90' : 'text-slate-300'}`}>
+                            <ChevronRight className="w-5 h-5" />
+                          </div>
                         </div>
                       </div>
 
@@ -1322,6 +1365,62 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         setForm={setDeptForm}
         onSubmit={handleCreateDepartment}
       />
+
+      {/* Edit Department Modal */}
+      {editingDept && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-xl font-black text-slate-900">Cập nhật phòng ban</h3>
+              <button onClick={() => setEditingDept(null)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                <Plus className="w-6 h-6 rotate-45" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateDepartment} className="p-6 space-y-4">
+              <FormField
+                label="Mã phòng ban"
+                value={editDeptForm.code}
+                onChange={(val) => setEditDeptForm(prev => ({ ...prev, code: val }))}
+                placeholder="Ví dụ: DEP001"
+                required
+              />
+              <FormField
+                label="Tên phòng ban"
+                value={editDeptForm.name}
+                onChange={(val) => setEditDeptForm(prev => ({ ...prev, name: val }))}
+                placeholder="Ví dụ: Phòng Kỹ Thuật"
+                required
+              />
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả</span>
+                <textarea
+                  value={editDeptForm.description}
+                  onChange={(e) => setEditDeptForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Mô tả ngắn gọn về phòng ban..."
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px] text-sm"
+                />
+              </label>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingDept(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingDept}
+                  className="px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 shadow-lg shadow-purple-100 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isUpdatingDept && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Cập nhật
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

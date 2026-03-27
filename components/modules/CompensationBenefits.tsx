@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings, ChevronDown, Check, Loader2 } from 'lucide-react';
+import { DollarSign, FileText, Heart, Shield, Lock, AlertTriangle, Settings, ChevronDown, Check, Loader2, Download, Eye } from 'lucide-react';
 import { User } from '@/lib/auth-types';
 import { employeeService, type Employee } from '@/services/employee.service';
 import { payrollService, type PayrollDetail, type PayrollMonthRow } from '@/services/payroll.service';
@@ -38,6 +38,93 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [isLoadingMonthRows, setIsLoadingMonthRows] = useState(false);
   const { hasPermission } = usePermissions();
   const [payrollEmployeeSelectOpen, setPayrollEmployeeSelectOpen] = useState(false);
+
+  // Payslip tab state
+  const [payslipMonth, setPayslipMonth] = useState<string>(() => String(new Date().getMonth() + 1));
+  const [isPdfLoading, setIsPdfLoading] = useState<'view' | 'download' | null>(null);
+
+  // Admin "Xuất lương" tab state
+  const [exportMonth, setExportMonth] = useState<string>(() => String(new Date().getMonth() + 1));
+  const [rowPdfLoading, setRowPdfLoading] = useState<Record<string, 'view' | 'download'>>({});
+
+  const setRowLoading = (userId: string, action: 'view' | 'download' | null) => {
+    setRowPdfLoading((prev) => {
+      if (action === null) {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      }
+      return { ...prev, [userId]: action };
+    });
+  };
+
+  const triggerPdfBlob = async (userId: string, month: string, filename: string, mode: 'view' | 'download') => {
+    const blob = await payrollService.downloadPayrollPdf(userId, month);
+    const objectUrl = URL.createObjectURL(blob);
+    if (mode === 'view') {
+      window.open(objectUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } else {
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+      toast.success('Đã tải phiếu lương thành công');
+    }
+  };
+
+  const handleViewPayslipPdf = async () => {
+    const targetUserId = user.id;
+    if (!targetUserId) return;
+    setIsPdfLoading('view');
+    try {
+      await triggerPdfBlob(targetUserId, payslipMonth, '', 'view');
+    } catch (error: any) {
+      toast.error('Không thể xem phiếu lương', { description: error.message || 'Vui lòng thử lại sau' });
+    } finally {
+      setIsPdfLoading(null);
+    }
+  };
+
+  const handleDownloadPayslipPdf = async () => {
+    const targetUserId = user.id;
+    if (!targetUserId) return;
+    setIsPdfLoading('download');
+    try {
+      const empName = (user as any).name || user.email || targetUserId;
+      await triggerPdfBlob(targetUserId, payslipMonth, `phieu-luong-thang${payslipMonth}-${empName}.pdf`, 'download');
+    } catch (error: any) {
+      toast.error('Không thể tải phiếu lương', { description: error.message || 'Vui lòng thử lại sau' });
+    } finally {
+      setIsPdfLoading(null);
+    }
+  };
+
+  const handleRowViewPdf = async (emp: Employee) => {
+    setRowLoading(emp.id, 'view');
+    try {
+      await triggerPdfBlob(emp.id, exportMonth, '', 'view');
+    } catch (error: any) {
+      toast.error(`Không thể xem phiếu lương của ${emp.fullName || emp.email}`, { description: error.message });
+    } finally {
+      setRowLoading(emp.id, null);
+    }
+  };
+
+  const handleRowDownloadPdf = async (emp: Employee) => {
+    setRowLoading(emp.id, 'download');
+    try {
+      const name = emp.fullName || emp.email || emp.id;
+      await triggerPdfBlob(emp.id, exportMonth, `phieu-luong-thang${exportMonth}-${name}.pdf`, 'download');
+    } catch (error: any) {
+      toast.error(`Không thể tải phiếu lương của ${emp.fullName || emp.email}`, { description: error.message });
+    } finally {
+      setRowLoading(emp.id, null);
+    }
+  };
   const selectedEmployee = useMemo(() => {
     if (selectedEmployeeId === 'me') return null;
     return employees.find((e) => e.id === selectedEmployeeId) || null;
@@ -177,17 +264,21 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     setIsCalculating(true);
     try {
       await payrollService.calculatePayroll(selectedMonth);
-      toast.success(`Đã yêu cầu tính toán bảng lương tổng thể`, {
+      toast.success(`Đã yêu cầu tính toán bảng lương tháng ${selectedMonth}`, {
         description: 'Dữ liệu đang được khởi tạo, vui lòng đợi trong giây lát.'
       });
-      // Đợi 1 chút rồi load lại
+      // Refetch sau khi generate
       setTimeout(async () => {
-        const rows = await payrollService.getPayrollByMonth(selectedMonth);
-        setMonthRows(rows || []);
-        if (selectedEmployeeId !== 'me' || !isAdmin) {
+        try {
+          const rows = await payrollService.getPayrollByMonth(selectedMonth);
+          setMonthRows(rows || []);
           const targetUserId = selectedEmployeeId === 'me' ? user.id : selectedEmployeeId;
-          const data = await payrollService.getPayrollByUserId(targetUserId, selectedMonth);
-          setPayroll(data);
+          if (targetUserId) {
+            const data = await payrollService.getPayrollByUserId(targetUserId, selectedMonth);
+            setPayroll(data);
+          }
+        } catch {
+          // Ignore refetch errors silently
         }
       }, 2000);
     } catch (error: any) {
@@ -495,7 +586,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                     </SelectContent>
                   </Select>
 
-                  {isAdmin && isPayrollDataMissing && hasPermission('PAYROLL_GENERATE') && (
+                  {isAdmin && hasPermission('PAYROLL_GENERATE') && (
                     <Button 
                       onClick={handleCalculatePayroll} 
                       disabled={isCalculating}
@@ -715,35 +806,162 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       )}
 
       {activeTab === 'payslip' && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Lịch sử phiếu lương</h3>
+        <div className="space-y-8">
 
-          <div className="space-y-3">
-            {payslips.map((payslip) => (
-              <div key={payslip.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Phiếu lương tháng {payslip.month}</h4>
-                      <p className="text-sm text-gray-600">
-                        {formatCurrency(payslip.amount)} • Đã thanh toán {payslip.paidDate}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleViewPayslip(payslip.id)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
-                  >
-                    <Lock className="w-4 h-4" />
-                    Xem phiếu lương
-                  </button>
+          {/* ===== Màn 1: Phiếu lương của tôi ===== */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FileText className="w-4 h-4 text-blue-600" />
+              </div>
+              <h3 className="text-base font-bold text-gray-900">Phiếu lương của tôi</h3>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-5 bg-gradient-to-br from-blue-50 to-indigo-50">
+              {/* Month selector */}
+              <div className="flex flex-wrap items-end gap-3 mb-5">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tháng</Label>
+                  <Select value={payslipMonth} onValueChange={setPayslipMonth}>
+                    <SelectTrigger className="h-9 w-28 text-sm bg-white border-slate-200 hover:border-indigo-500 rounded-lg">
+                      <SelectValue placeholder="Tháng" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const m = String(i + 1);
+                        return <SelectItem key={m} value={m}>Tháng {m}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            ))}
+
+              {/* Card info */}
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center shadow-sm">
+                  <FileText className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">
+                    Phiếu lương tháng {payslipMonth}/{new Date().getFullYear()}
+                  </h4>
+                  <p className="text-sm text-gray-500 mt-0.5">{(user as any).name || user.email}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleViewPayslipPdf}
+                  disabled={isPdfLoading !== null}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+                >
+                  {isPdfLoading === 'view' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                  Xem phiếu lương
+                </button>
+                <button
+                  onClick={handleDownloadPayslipPdf}
+                  disabled={isPdfLoading !== null}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+                >
+                  {isPdfLoading === 'download' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Tải xuống PDF
+                </button>
+              </div>
+            </div>
           </div>
+
+          {/* ===== Màn 2: Xuất lương nhân viên (admin only) ===== */}
+          {isAdmin && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <Download className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <h3 className="text-base font-bold text-gray-900">Xuất phiếu lương nhân viên</h3>
+                </div>
+
+                {/* Month selector for export */}
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tháng</Label>
+                  <Select value={exportMonth} onValueChange={setExportMonth}>
+                    <SelectTrigger className="h-9 w-28 text-sm bg-white border-slate-200 hover:border-indigo-500 rounded-lg">
+                      <SelectValue placeholder="Tháng" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const m = String(i + 1);
+                        return <SelectItem key={m} value={m}>Tháng {m}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                {isLoadingEmployees ? (
+                  <div className="flex items-center justify-center py-12 text-slate-500 gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" /> Đang tải danh sách nhân viên...
+                  </div>
+                ) : employees.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm">Không có nhân viên nào.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhân viên</th>
+                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phòng ban</th>
+                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Phiếu lương tháng {exportMonth}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {employees.map((emp) => {
+                          const rowLoading = rowPdfLoading[emp.id] ?? null;
+                          return (
+                            <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-5 py-3">
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-semibold text-slate-900">{emp.fullName || '—'}</span>
+                                  <span className="text-[11px] text-slate-500">{emp.email}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3">
+                                <span className="text-sm text-slate-600">{(typeof emp.department === 'object' && emp.department !== null ? (emp.department as any).name : emp.department) || '—'}</span>
+                              </td>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleRowViewPdf(emp)}
+                                    disabled={rowLoading !== null}
+                                    title="Xem phiếu lương"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold"
+                                  >
+                                    {rowLoading === 'view' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                                    Xem
+                                  </button>
+                                  <button
+                                    onClick={() => handleRowDownloadPdf(emp)}
+                                    disabled={rowLoading !== null}
+                                    title="Tải xuống PDF"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold shadow-sm"
+                                  >
+                                    {rowLoading === 'download' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                    Tải PDF
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
