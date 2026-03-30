@@ -41,7 +41,7 @@ function readUserSnapshot(): User {
     return GUEST_USER;
   }
 
-  // Ưu tiên đọc từ sessionStorage, nếu không có thì đọc từ localStorage
+  // Prioritize reading from sessionStorage, fallback to localStorage if not available
   const raw = window.sessionStorage.getItem('user') || window.localStorage.getItem('user');
 
   if (raw === cachedRawUser) {

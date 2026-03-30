@@ -23,9 +23,9 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
   const userInitial = safeUserName.charAt(0).toUpperCase();
 
   const getRiskLevel = (score: number) => {
-    if (score < 30) return { label: 'Thấp', color: 'green' };
-    if (score < 70) return { label: 'Trung bình', color: 'yellow' };
-    return { label: 'Cao', color: 'red' };
+    if (score < 30) return { label: 'Low', color: 'green' };
+    if (score < 70) return { label: 'Medium', color: 'yellow' };
+    return { label: 'High', color: 'red' };
   };
 
   const riskLevel = getRiskLevel(context.riskScore);
@@ -38,7 +38,7 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
       setIsProfileOpen(true);
     } catch (error: any) {
       console.error("Failed to fetch profile:", error);
-      toast.error("Không thể tải thông tin hồ sơ", {
+      toast.error("Cannot load profile information", {
         description: error.message
       });
     } finally {
@@ -67,14 +67,14 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
                 ) : (
                   <XCircle className="w-4 h-4 text-red-600" />
                 )}
-                <span className="text-gray-700">Thiết bị</span>
+                <span className="text-gray-700">Device</span>
               </div>
 
               {/* Risk Score */}
               <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full bg-${riskLevel.color}-100`}>
                 <div className={`w-2 h-2 rounded-full bg-${riskLevel.color}-600`} />
                 <span className={`text-${riskLevel.color}-900 font-medium`}>
-                  Rủi ro: {riskLevel.label} ({context.riskScore})
+                  Risk: {riskLevel.label} ({context.riskScore})
                 </span>
               </div>
 
@@ -125,7 +125,7 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     <UserIcon className="w-4 h-4" />
-                    {loadingProfile ? 'Đang tải...' : 'Xem hồ sơ'}
+                    {loadingProfile ? 'Loading...' : 'View Profile'}
                   </button>
                   <div className="h-px bg-gray-100 my-1 mx-2" />
                   <button
@@ -136,7 +136,7 @@ export function SecurityContext({ context, user, onLogout }: SecurityContextProp
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    Đăng xuất
+                    Logout
                   </button>
                 </div>
               )}

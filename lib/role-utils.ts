@@ -33,7 +33,7 @@ export const isAdminRoleId = (roleId: unknown): boolean => {
   return getAdminRoleIds().includes(normalizedRoleId);
 };
 
-/** Role dạng chuỗi hoặc object từ `user.role` */
+/** String or object Role from `user.role` */
 export const isAdminRoleName = (role: unknown): boolean => {
   if (role && typeof role === 'object' && 'name' in role) {
     return isAdminRoleName((role as any).name);
@@ -48,7 +48,7 @@ export const isAdminRoleName = (role: unknown): boolean => {
   );
 };
 
-/** Admin: UUID trong env / default HOẶC tên role quản trị (System Admin, …). */
+/** Admin: UUID in env / default OR admin role name (System Admin, …). */
 export const isAdminUser = (userRoleId: unknown, userRole: unknown): boolean => {
   return isAdminRoleId(userRoleId) || isAdminRoleName(userRole);
 };

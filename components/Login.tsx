@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { LoginForm } from './auth/LoginForm';
-import { RegisterForm } from './auth/RegisterForm'; // (Dùng file bạn đã update ở bước trước)
-import { ForgotPasswordForm } from './auth/ForgotPassword'; // (File cũ hoặc update sau)
+import { RegisterForm } from './auth/RegisterForm'; // (Using the updated file from previous step)
+import { ForgotPasswordForm } from './auth/ForgotPassword'; // (Old file or updated later)
 import { ResetPasswordForm } from './auth/ResetPassword';
 import { MfaForm } from './auth/MfaForm';
 import { UserProfile } from '@/types/types';
@@ -32,7 +32,7 @@ export function Login({ onLogin, initialStep = 'credentials' }: LoginProps) {
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
 
-      {/* --- CỘT TRÁI: BRANDING & VISUAL (Chỉ hiện trên Desktop) --- */}
+      {/* --- LEFT COLUMN: BRANDING & VISUAL (Desktop only) --- */}
       <div className="hidden bg-slate-900 lg:flex flex-col justify-between p-12 text-white relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-soft-light"></div>
@@ -72,11 +72,11 @@ export function Login({ onLogin, initialStep = 'credentials' }: LoginProps) {
         </div>
       </div>
 
-      {/* --- CỘT PHẢI: FORM CONTAINER --- */}
+      {/* --- RIGHT COLUMN: FORM CONTAINER --- */}
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="mx-auto w-full max-w-md space-y-8">
 
-          {/* Header Mobile (Chỉ hiện khi màn hình nhỏ) */}
+          {/* Header Mobile (Visible on small screens only) */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-200 mb-4">
               <Shield className="w-8 h-8 text-white" />

@@ -9,17 +9,17 @@ import { GUEST_USER, useStoredUser } from '@/lib/use-stored-user';
 import { usePermissions } from '@/lib/use-permissions';
 
 const navItems = [
-  { href: '/dashboard', label: 'Tổng quan' },
-  { href: '/dashboard/employees', label: 'Nhân sự', module: 'USER' },
-  { href: '/dashboard/rbac', label: 'Vai trò', module: 'ROLE', permission: 'ROLE_VIEW' },
-  { href: '/dashboard/attendance', label: 'Lịch làm việc', module: 'WEEKLY_SCHEDULE' },
-  // { href: '/dashboard/timekeeping', label: 'Chấm công', module: 'TIMEKEEPING' },
-  { href: '/dashboard/departments', label: 'Phòng ban', module: 'DEPARTMENT' },
-  { href: '/dashboard/assets', label: 'Tài sản', module: 'ASSET' },
-  { href: '/dashboard/asset-management', label: 'Quản lý cấp phát', module: 'ASSET_ALLOCATE', permission: 'ASSET_VIEW' },
-  // { href: '/dashboard/leave-requests', label: 'Nghỉ phép', module: 'LEAVE_REQUEST' },
+  { href: '/dashboard', label: 'Overview' },
+  { href: '/dashboard/employees', label: 'Employees', module: 'USER' },
+  { href: '/dashboard/rbac', label: 'Roles', module: 'ROLE', permission: 'ROLE_VIEW' },
+  { href: '/dashboard/attendance', label: 'Work Schedule', module: 'WEEKLY_SCHEDULE' },
+  // { href: '/dashboard/timekeeping', label: 'Timekeeping', module: 'TIMEKEEPING' },
+  { href: '/dashboard/departments', label: 'Departments', module: 'DEPARTMENT' },
+  { href: '/dashboard/assets', label: 'Assets', module: 'ASSET' },
+  { href: '/dashboard/asset-management', label: 'Asset Allocation', module: 'ASSET_ALLOCATE', permission: 'ASSET_VIEW' },
+  // { href: '/dashboard/leave-requests', label: 'Leave Requests', module: 'LEAVE_REQUEST' },
   // { href: '/dashboard/rbac', label: 'Access Manager', module: 'FUNCTION' },
-  { href: '/dashboard/payroll', label: 'Lương thưởng', module: 'PAYROLL' },
+  { href: '/dashboard/payroll', label: 'Payroll', module: 'PAYROLL' },
 ];
 
 
@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.module) return true;
-    // Nếu có permission cụ thể thì check permission đó, không check module
+    // If there is a specific permission, check it instead of the module
     if (item.permission) return hasPermission(item.permission);
     return hasModuleAccess(item.module);
   });
@@ -43,15 +43,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router, user]);
 
   const onLogout = () => {
-    // Xóa localStorage
+    // Clear localStorage
     localStorage.removeItem('user');
     localStorage.removeItem('accessToken');
 
-    // Xóa sessionStorage
+    // Clear sessionStorage
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('accessToken');
 
-    // Xóa cookie
+    // Clear cookie
     document.cookie = 'access_token=; path=/; max-age=0';
     router.push('/login');
   };

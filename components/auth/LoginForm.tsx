@@ -30,8 +30,8 @@ import {
 // } from "@/components/ui/select";
 
 const loginSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
-  password: z.string().min(1, "Vui lòng nhập mật khẩu"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Please enter password"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -84,20 +84,20 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
         return;
       }
 
-      // Lưu email, password và department vào sessionStorage để dùng sau khi verify OTP
+      // Save email, password and department to sessionStorage for use after verifying OTP
       sessionStorage.setItem('pendingLoginEmail', data.email);
       sessionStorage.setItem('pendingLoginPassword', data.password);
       // if (selectedDepartment) {
       //   sessionStorage.setItem('selectedDepartment', selectedDepartment.id);
       // }
 
-      // Gọi API loginOtp để gửi OTP
+      // Call loginOtp API to send OTP
       await authService.loginOtp(data.email, data.password, rc);
 
       setIdentifier(data.email);
 
       // Luôn chuyển sang màn hình MFA sau khi gửi OTP thành công
-      toast.success("Mã OTP đã được gửi đến email của bạn");
+      toast.success("OTP code has been sent to your email");
       onSuccess(); // Chuyển sang form MFA
 
     } catch (error: unknown) {
@@ -107,8 +107,8 @@ export function LoginForm({ email, setIdentifier, onSuccess, onForgotPassword, o
       sessionStorage.removeItem('pendingLoginPassword');
       sessionStorage.removeItem('selectedDepartment');
 
-      const errMsg = error instanceof Error ? error.message : "Kiểm tra lại email hoặc mật khẩu";
-      toast.error("Đăng nhập thất bại", { description: errMsg });
+      const errMsg = error instanceof Error ? error.message : "Please check your email or password";
+      toast.error("Login failed", { description: errMsg });
     } finally {
       setIsLoading(false);
     }

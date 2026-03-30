@@ -8,16 +8,16 @@ import { ArrowLeft, KeyRound, Eye, EyeOff, Check, Loader2, Lock } from 'lucide-r
 import { toast } from 'sonner';
 import { authService } from '@/services/auth.service';
 
-// --- 1. SCHEMA VALIDATION (Đồng bộ với Register) ---
+// --- 1. SCHEMA VALIDATION (Sync with Register) ---
 const resetSchema = z.object({
-  otp: z.string().length(6, "Mã OTP phải có đúng 6 số").regex(/^\d+$/, "Mã OTP chỉ được chứa số"),
+  otp: z.string().length(6, "OTP code must have exactly 6 digits").regex(/^\d+$/, "OTP code must contain only numbers"),
   password: z.string()
-    .min(8, "Tối thiểu 8 ký tự")
-    .regex(/[A-Z]/, "Cần ít nhất 1 chữ in hoa")
-    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Cần ít nhất 1 ký tự đặc biệt"),
+    .min(8, "Minimum 8 characters")
+    .regex(/[A-Z]/, "Needs at least 1 uppercase letter")
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Needs at least 1 special character"),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Mật khẩu xác nhận không khớp",
+  message: "Passwords do not match",
   path: ["confirmPassword"],
 });
 
@@ -43,13 +43,13 @@ export function ResetPasswordForm({ email, onBack, onSuccess }: ResetPasswordFor
     resolver: zodResolver(resetSchema),
   });
 
-  // Theo dõi giá trị để hiện checklist
+  // Track value to show checklist
   const passwordValue = watch("password", "");
 
   const requirements = [
-    { re: /.{8,}/, label: "8+ ký tự" },
-    { re: /[A-Z]/, label: "Chữ hoa" },
-    { re: /[!@#$%^&*(),.?":{}|<>]/, label: "Ký tự đặc biệt" },
+    { re: /.{8,}/, label: "8+ characters" },
+    { re: /[A-Z]/, label: "Uppercase letter" },
+    { re: /[!@#$%^&*(),.?":{}|<>]/, label: "Special character" },
   ];
 
   // --- 3. SUBMIT ---
@@ -58,8 +58,8 @@ export function ResetPasswordForm({ email, onBack, onSuccess }: ResetPasswordFor
     try {
       const normalizedEmail = (email || '').trim().toLowerCase();
       if (!normalizedEmail) {
-        toast.error('Thiếu email để đặt lại mật khẩu', {
-          description: 'Vui lòng quay lại bước trước và nhập email.',
+        toast.error('Missing email to reset password', {
+          description: 'Please go back to previous step and enter email.',
         });
         return;
       }
@@ -70,14 +70,14 @@ export function ResetPasswordForm({ email, onBack, onSuccess }: ResetPasswordFor
         newPassword: data.password,
       });
 
-      toast.success("Đổi mật khẩu thành công!", {
-        description: "Vui lòng đăng nhập bằng mật khẩu mới."
+      toast.success("Password reset successful!", {
+        description: "Please login with your new password."
       });
       onSuccess();
     } catch (error: any) {
       console.error('Reset password error:', error);
-      toast.error('Đổi mật khẩu thất bại', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Password reset failed', {
+        description: error.message || 'Please try again later',
       });
     } finally {
       setIsLoading(false);

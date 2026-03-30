@@ -8,7 +8,7 @@ type FetchOptions = RequestInit & {
 export async function fetchClient<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { headers, ...rest } = options;
   
-  // Tự động lấy token từ sessionStorage (ưu tiên) hoặc localStorage
+  // Automatically get token from sessionStorage (prioritized) or localStorage
   let token: string | null = null;
   if (typeof window !== 'undefined') {
     token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
@@ -27,7 +27,7 @@ export async function fetchClient<T>(endpoint: string, options: FetchOptions = {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    // Ném lỗi để component bắt được (message từ Backend trả về)
+    // Throw error to be caught by component (message returned from Backend)
     throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
   }
 

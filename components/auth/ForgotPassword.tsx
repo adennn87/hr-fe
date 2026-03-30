@@ -25,7 +25,7 @@ import {
 
 // 1. Schema Validation
 const forgotSchema = z.object({
-  email: z.string().email("Vui lòng nhập địa chỉ email hợp lệ"),
+  email: z.string().email("Please enter a valid email address"),
 });
 
 type ForgotFormValues = z.infer<typeof forgotSchema>;
@@ -65,8 +65,8 @@ export function ForgotPasswordForm({ email, setIdentifier, onBack, onSuccess }: 
       // Cập nhật lại email cho component cha (để bước Reset Password dùng lại)
       setIdentifier(data.email);
 
-      toast.success("Mã xác thực đã được gửi!", {
-        description: "Vui lòng kiểm tra hộp thư đến của bạn."
+      toast.success("Verification code sent!", {
+        description: "Please check your inbox."
       });
       
       // Chuyển sang trang nhập OTP (ResetPassword)
@@ -74,8 +74,8 @@ export function ForgotPasswordForm({ email, setIdentifier, onBack, onSuccess }: 
     } catch (error: any) {
       recaptchaRef.current?.reset();
       console.error("Forgot password error:", error);
-      toast.error("Gửi yêu cầu thất bại", {
-        description: error.message || "Email không tồn tại hoặc có lỗi xảy ra."
+      toast.error("Failed to send request", {
+        description: error.message || "Email does not exist or an error occurred."
       });
     } finally {
       setIsLoading(false);

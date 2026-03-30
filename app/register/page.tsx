@@ -3,6 +3,6 @@
 import { Login } from '@/components/Login';
 
 export default function RegisterPage() {
-  // Tái sử dụng màn Login nhưng mở thẳng step đăng ký
+  // Reuse Login screen but open register step directly
   return <Login initialStep="register" />;
 }

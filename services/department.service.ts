@@ -28,7 +28,7 @@ export interface Department {
 
 export const departmentService = {
   /**
-   * Lấy danh sách tất cả departments
+   * Get list of all departments
    * API endpoint: GET /departments
    */
   async getDepartments(): Promise<Department[]> {
@@ -56,7 +56,7 @@ export const departmentService = {
   },
 
   /**
-   * Tạo phòng ban mới
+   * Create new department
    * API endpoint: POST /departments
    */
   async createDepartment(data: { code: string; name: string; description?: string }): Promise<Department> {
@@ -86,7 +86,7 @@ export const departmentService = {
   },
 
   /**
-   * Cập nhật phòng ban
+   * Update department
    * API endpoint: PATCH /departments/:id
    */
   async updateDepartment(

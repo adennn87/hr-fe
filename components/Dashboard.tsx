@@ -32,7 +32,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     {
       id: 'iam' as ModuleType,
       name: 'Access Management',
-      description: 'Quản lý định danh',
+      description: 'Identity Management',
       icon: Shield,
       color: 'blue',
       roles: ['System Admin', 'HR Manager']
@@ -47,15 +47,15 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     },
     {
       id: 'compensation' as ModuleType,
-      name: 'Lương & Phúc lợi',
-      description: 'C&B - Khu vực rủi ro cao',
+      name: 'Compensation & Benefits',
+      description: 'C&B - High Risk Area',
       icon: DollarSign,
       color: 'green',
       roles: ['System Admin', 'Accountant', 'HR Manager', 'Employee']
     },
     {
       id: 'time' as ModuleType,
-      name: 'Lịch làm việc & Nghỉ phép',
+      name: 'Work Schedule & Leave',
       description: 'Work Schedule & Leave',
       icon: Clock,
       color: 'orange',
@@ -63,7 +63,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     },
   ].filter(m => m.id !== 'iam' || canViewIAM);
 
-  // Helper function để normalize role name
+  // Helper function to normalize role name
   const normalizeRole = (role: any): string => {
     if (!role) return '';
     if (typeof role === 'object' && role.name) return role.name;
@@ -71,7 +71,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     return roleStr.trim();
   };
 
-  // Helper function để check role match (case-insensitive và flexible matching)
+  // Helper function to check role match (case-insensitive and flexible matching)
   const hasAccess = (moduleRoles: string[], userRole: any): boolean => {
     const normalizedUserRole = normalizeRole(userRole).toLowerCase();
     return moduleRoles.some(moduleRole => {
@@ -93,7 +93,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
     module.roles ? hasAccess(module.roles, user.role) : true
   );
 
-  // isAdmin được tính trên client sau khi hydrate để tránh hydration mismatch
+  // isAdmin is calculated on the client after hydration to avoid hydration mismatch
   // const [isAdmin, setIsAdmin] = useState(false);
 
   // useEffect(() => {
@@ -104,7 +104,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
   //       return;
   //     }
 
-  //     // Fallback: user.role có thể đang là roleId UUID
+  //     // Fallback: user.role might be roleId UUID
   //     const fallbackRoleId = normalizeRoleId(user.role);
   //     setIsAdmin(isAdminRoleId(fallbackRoleId));
   //   } catch (error) {
@@ -113,11 +113,11 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
   //   }
   // }, [user.role]);
 
-  // Nếu không có module nào match, hiển thị tất cả (fallback)
+  // If no module matches, show all (fallback)
   // Hoặc có thể hiển thị message cảnh báo
   const finalAccessibleModules = accessibleModules.length > 0 ? accessibleModules : modules;
 
-  // Debug logging để kiểm tra
+  // Debug logging for checking
   if (accessibleModules.length === 0) {
     console.warn('⚠️ No modules matched for role:', user.role);
     console.log('Available roles in modules:', modules.flatMap(m => m.roles));
@@ -151,7 +151,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
                     className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-blue-700 transition-colors"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Tạo tài khoản mới
+                    Create New Account
                   </button>
                 </div>
               )}
@@ -161,39 +161,39 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Phiên đang hoạt động</span>
+                  <span className="text-sm opacity-90">Active session</span>
                   <Activity className="w-5 h-5" />
                 </div>
                 <p className="text-3xl font-bold">1</p>
-                <p className="text-xs opacity-75 mt-1">Từ {securityContext.deviceType}</p>
+                <p className="text-xs opacity-75 mt-1">From {securityContext.deviceType}</p>
               </div>
 
               <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Điểm bảo mật</span>
+                  <span className="text-sm opacity-90">Security Score</span>
                   <Shield className="w-5 h-5" />
                 </div>
                 <p className="text-3xl font-bold">{100 - securityContext.riskScore}%</p>
-                <p className="text-xs opacity-75 mt-1">Rủi ro thấp</p>
+                <p className="text-xs opacity-75 mt-1">Low Risk</p>
               </div>
 
               <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Quyền truy cập</span>
+                  <span className="text-sm opacity-90">Access Rights</span>
                   <Users className="w-5 h-5" />
                 </div>
                 <p className="text-3xl font-bold">{finalAccessibleModules.length}</p>
-                <p className="text-xs opacity-75 mt-1">Phân hệ được phép</p>
+                <p className="text-xs opacity-75 mt-1">Allowed Modules</p>
               </div>
             </div>
 
             {/* Modules Grid */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Phân hệ của bạn</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Modules</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {finalAccessibleModules.map((module) => {
                   const Icon = module.icon;
-                  // Map color to Tailwind classes để tránh dynamic class issues
+                  // Map color to Tailwind classes to avoid dynamic class issues
                   const colorClasses = {
                     blue: {
                       border: 'border-blue-200 hover:border-blue-400',
@@ -258,7 +258,7 @@ export function Dashboard({ user, securityContext }: DashboardProps) {
             onClick={() => setActiveModule('overview')}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
           >
-            ← Quay lại Dashboard
+            ← Back to Dashboard
           </button>
         </div>
       )}

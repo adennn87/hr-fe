@@ -31,8 +31,8 @@ export interface AllocatedAsset {
 
 export const assetService = {
   /**
-   * Lấy danh sách tài sản được cấp phát cho một nhân viên
-   * @param employeeId ID của employee
+   * Get list of assets allocated to an employee
+   * @param employeeId ID of employee
    * API endpoint: GET /allocated-assets/allocate/me/{employeeId}
    */
   async getAllocatedAssetsByEmployee(employeeId: string): Promise<AllocatedAsset[]> {
@@ -47,7 +47,7 @@ export const assetService = {
       throw new Error('Authorization token is required');
     }
 
-    // Thử endpoint /allocated-assets/allocate/me/{employeeId} trước
+    // Try endpoint /allocated-assets/allocate/me/{employeeId} first
     let response = await fetch(`${baseUrl}/allocated-assets/allocate/me/${employeeId}`, {
       method: 'GET',
       headers: {
@@ -57,11 +57,11 @@ export const assetService = {
       },
     });
 
-    // Nếu endpoint trên không tồn tại (404) hoặc không có quyền (403), thử các endpoint khác
+    // If endpoint doesn't exist (404) or no permission (403), try other endpoints
     if (!response.ok && (response.status === 404 || response.status === 403)) {
       console.log(`Endpoint /allocated-assets/allocate/me/${employeeId} returned ${response.status}, trying alternative endpoints...`);
       
-      // Thử /allocated-assets/{employeeId}
+      // Try /allocated-assets/{employeeId}
       response = await fetch(`${baseUrl}/allocated-assets/${employeeId}`, {
         method: 'GET',
         headers: {
@@ -72,7 +72,7 @@ export const assetService = {
       });
     }
 
-    // Nếu vẫn không được, thử /allocated-assets/allocate/{employeeId}
+    // If still failing, try /allocated-assets/allocate/{employeeId}
     if (!response.ok && (response.status === 404 || response.status === 403)) {
       console.log(`Endpoint /allocated-assets/${employeeId} returned ${response.status}, trying /allocated-assets/allocate/${employeeId}...`);
       
@@ -90,21 +90,21 @@ export const assetService = {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.message || errorData.error || `Error ${response.status}`;
       
-      // Nếu là 404, trả về mảng rỗng (có thể employee chưa có assets)
+      // If 404, return empty array (employee might not have assets yet)
       if (response.status === 404) {
         console.warn(`No allocated assets found for employee ${employeeId}`);
         return [];
       }
       
-      // Nếu là 403 (không có quyền), trả về mảng rỗng thay vì throw error
-      // Vì có thể user không có quyền xem assets nhưng không phải lỗi nghiêm trọng
+      // If 403 (no permission), return empty array instead of throw error
+      // Because user might not have permission to view assets but it's not a severe error
       if (response.status === 403) {
         console.warn(`Permission denied for viewing assets of employee ${employeeId}. Returning empty array.`);
         console.warn('Error message:', errorMessage);
         return [];
       }
       
-      // Các lỗi khác mới log error và throw
+      // Log and throw other errors
       console.error(`API Error [${response.status}]:`, errorMessage);
       console.error('Response URL:', `${baseUrl}/allocated-assets/allocate/me/${employeeId}`);
       console.error('Full error data:', errorData);
@@ -116,14 +116,14 @@ export const assetService = {
     console.log('✅ Is array?', Array.isArray(data));
     console.log('✅ Data length:', Array.isArray(data) ? data.length : 'Not an array');
     
-    // Đảm bảo trả về array
+    // Guarantee returning array
     const result = Array.isArray(data) ? data : [];
     console.log('✅ Returning assets:', result.length, 'items');
     return result;
   },
 
   /**
-   * Lấy toàn bộ danh sách tài sản được cấp phát (dành cho Admin/Manager)
+   * Get entire list of allocated assets (for Admin/Manager)
    * API endpoint: GET /allocated-assets/allocate/list?status=
    */
   async getAllocatedAssets(status: string = ''): Promise<any[]> {
@@ -155,7 +155,7 @@ export const assetService = {
   },
 
   /**
-   * Lấy toàn bộ danh sách tài sản trong kho
+   * Get entire list of inventory assets
    * API endpoint: GET /allocated-assets/asscetAll
    */
   async getInventoryAssets(): Promise<Asset[]> {

@@ -69,7 +69,7 @@ type WeekScheduleRow = {
   leaveReason?: string | null;
 };
 
-/** Chọn bản ghi lịch tuần trùng tuần hiện tại hoặc gần nhất. */
+/** Select the weekly schedule record matching the current or nearest week. */
 function pickCurrentWeekSchedule(schedules: WeeklySchedule[]): WeeklySchedule | null {
   if (!schedules?.length) return null;
   const today = new Date();
@@ -82,13 +82,13 @@ function pickCurrentWeekSchedule(schedules: WeeklySchedule[]): WeeklySchedule | 
   const mondayStr = currentWeekMonday.toISOString().split('T')[0];
 
   let currentSchedule = schedules.find((s) => {
-    // So sánh chuỗi YYYY-MM-DD để tránh lệch múi giờ
+    // Compare YYYY-MM-DD string to avoid timezone issues
     const sDateStr = s.weekStartDate.includes('T') ? s.weekStartDate.split('T')[0] : s.weekStartDate;
     return sDateStr === mondayStr;
   });
 
   if (!currentSchedule && schedules.length > 0) {
-    // Nếu không có tuần hiện tại, lấy tuần mới nhất
+    // If no current week, get the latest week
     const sortedSchedules = [...schedules].sort((a, b) => {
       const dateA = new Date(a.weekStartDate).getTime();
       const dateB = new Date(b.weekStartDate).getTime();
@@ -201,7 +201,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       setEmployees(flattened);
     } catch (error: any) {
       console.error('Error loading employees:', error);
-      toast.error('Không thể tải danh sách nhân viên');
+      toast.error('Cannot load employee list');
     } finally {
       setIsLoadingEmployees(false);
     }
@@ -217,7 +217,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   const isLeaveFilterShowAll = useMemo(() => !leaveSelectedUserId || leaveSelectedUserId === 'all', [leaveSelectedUserId]);
 
   const leaveFilterEmployeeLabel = useMemo(() => {
-    if (isLeaveFilterShowAll) return 'Tất cả nhân viên';
+    if (isLeaveFilterShowAll) return 'All employees';
     const emp = employees.find(e => e.id === leaveSelectedUserId);
     return emp ? getEmployeeDisplayLabel(emp) : leaveSelectedUserId;
   }, [isLeaveFilterShowAll, leaveSelectedUserId, employees]);
@@ -251,7 +251,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   }, [scheduleBrowseAll, employees, scheduleSearch]);
 
   const formatScheduleForDisplay = (schedule: any): WeekScheduleRow[] => {
-    const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const scheduleStartDate = new Date(schedule.weekStartDate);
@@ -269,12 +269,12 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
         const dateStr = `${String(dayDate.getDate()).padStart(2, '0')}/${String(dayDate.getMonth() + 1).padStart(2, '0')}`;
         const dayNameIndex = day.dayOfWeek === 7 ? 0 : day.dayOfWeek;
 
-        let shiftStr = 'Nghỉ';
-        if (day.isLeave) shiftStr = `Nghỉ phép (${day.leaveType || 'ANNUAL'})`;
+        let shiftStr = 'Off';
+        if (day.isLeave) shiftStr = `Leave (${day.leaveType || 'ANNUAL'})`;
         else if (day.isWorking) {
           const start = day.startTime ? day.startTime.split(':').slice(0, 2).join(':') : '';
           const end = day.endTime ? day.endTime.split(':').slice(0, 2).join(':') : '';
-          shiftStr = start && end ? `${start} - ${end}` : 'Làm việc';
+          shiftStr = start && end ? `${start} - ${end}` : 'Working';
         }
 
         return {
@@ -379,12 +379,12 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     setIsSubmittingLeave(true);
     try {
       await leaveRequestService.createLeaveRequest(leaveForm);
-      toast.success('Gửi đơn thành công');
+      toast.success('Request submitted successfully');
       setIsCreateLeaveModalOpen(false);
       const data = isAdmin ? await leaveRequestService.getAllLeaveRequests() : await leaveRequestService.getMyLeaveRequests();
       setLeaveRequests(data || []);
     } catch (error) {
-      toast.error('Lỗi khi gửi đơn');
+      toast.error('Error submitting request');
     } finally {
       setIsSubmittingLeave(false);
     }
@@ -424,23 +424,23 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      if (!scheduleForm.userId) throw new Error('Chọn nhân viên');
+      if (!scheduleForm.userId) throw new Error('Select employee');
       await weeklyScheduleService.createWeeklySchedule({
         ...scheduleForm,
         days: scheduleForm.days.map(d => d.isWorking ? { ...d } : { dayOfWeek: d.dayOfWeek, isWorking: false })
       });
-      toast.success('Tạo lịch thành công');
+      toast.success('Schedule created successfully');
       setIsCreateScheduleModalOpen(false);
       if (isAdmin && scheduleScope === 'all') fetchAllSchedulesBrowse();
       else fetchWeeklyScheduleForUser(viewingUserId || user.id);
     } catch (error: any) {
-      toast.error(error.message || 'Lỗi khi tạo lịch');
+      toast.error(error.message || 'Error creating schedule');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
     <div className="space-y-6">
@@ -450,8 +450,8 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
             <Clock className="w-6 h-6 text-orange-600" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Quản lý ca làm & Nghỉ phép</h2>
-            <p className="text-sm text-gray-500">Xem và sắp xếp lịch làm việc hàng tuần</p>
+            <h2 className="text-2xl font-bold text-gray-900">Shift & Leave Management</h2>
+            <p className="text-sm text-gray-500">View and arrange weekly work schedule</p>
           </div>
         </div>
       </div>
@@ -459,8 +459,8 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       <div className="border-b border-gray-200">
         <div className="flex gap-6">
           {[
-            { id: 'leave', label: 'Quản lý nghỉ phép', icon: Calendar },
-            { id: 'schedule', label: 'Lịch làm việc', icon: Clock },
+            { id: 'leave', label: 'Leave Management', icon: Calendar },
+            { id: 'schedule', label: 'Work Schedule', icon: Clock },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -480,19 +480,19 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       {activeTab === 'leave' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900">Đơn xin nghỉ</h3>
+            <h3 className="text-lg font-bold text-gray-900">Leave Requests</h3>
             <Button onClick={() => setIsCreateLeaveModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" /> Tạo đơn mới
+              <Plus className="w-4 h-4 mr-2" /> New Request
             </Button>
           </div>
 
           {isAdmin && hasPermission('LEAVE_REQUEST_APPROVE') && (
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <Label className="text-sm font-medium text-gray-600 shrink-0">Lọc nhân viên:</Label>
+              <Label className="text-sm font-medium text-gray-600 shrink-0">Filter employee:</Label>
               <Select value={leaveSelectedUserId} onValueChange={setLeaveSelectedUserId}>
-                <SelectTrigger className="w-64 bg-white"><SelectValue placeholder="Tất cả nhân viên" /></SelectTrigger>
+                <SelectTrigger className="w-64 bg-white"><SelectValue placeholder="All employees" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả nhân viên</SelectItem>
+                  <SelectItem value="all">All employees</SelectItem>
                   {employees.map(e => <SelectItem key={e.id} value={e.id}>{getEmployeeDisplayLabel(e)}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -520,26 +520,26 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                     </div>
                     {isAdmin && req.status === 'PENDING' && hasPermission('LEAVE_REQUEST_APPROVE') && (
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="text-green-600" onClick={() => leaveRequestService.updateLeaveStatus(req.id, 'APPROVED').then(() => loadEmployees())}>Duyệt</Button>
-                        <Button size="sm" variant="outline" className="text-red-600">Từ chối</Button>
+                        <Button size="sm" variant="outline" className="text-green-600" onClick={() => leaveRequestService.updateLeaveStatus(req.id, 'APPROVED').then(() => loadEmployees())}>Approve</Button>
+                        <Button size="sm" variant="outline" className="text-red-600">Reject</Button>
                       </div>
                     )}
                   </div>
                 </div>
               ))}
             </div>
-          ) : <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed text-gray-400">Không có đơn nghỉ phép</div>}
+          ) : <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed text-gray-400">No leave requests</div>}
         </div>
       )}
 
       {activeTab === 'schedule' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-lg font-bold text-gray-900">Lịch tuần này</h3>
+            <h3 className="text-lg font-bold text-gray-900">This Week's Schedule</h3>
             <div className="flex items-center gap-3">
               {isAdmin && scheduleScope === 'all' && (
                 <div className="relative w-64">
-                  <Input placeholder="Tìm nhân viên..." value={scheduleSearch} onChange={e => setScheduleSearch(e.target.value)} className="pl-9 h-9" />
+                  <Input placeholder="Search employee..." value={scheduleSearch} onChange={e => setScheduleSearch(e.target.value)} className="pl-9 h-9" />
                   <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               )}
@@ -547,14 +547,14 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                 <Select value={scheduleScope} onValueChange={v => setScheduleScope(v as any)}>
                   <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="self">Lịch của tôi</SelectItem>
-                    <SelectItem value="all">Tất cả NV</SelectItem>
+                    <SelectItem value="self">My Schedule</SelectItem>
+                    <SelectItem value="all">All Employees</SelectItem>
                   </SelectContent>
                 </Select>
               )}
               {isAdmin && hasPermission('WEEKLY_SCHEDULE_CREATE') && (
                 <Button onClick={handleOpenCreateScheduleModal} size="sm" className="bg-purple-600 hover:bg-purple-700 h-9">
-                  <Plus className="w-4 h-4 mr-2" /> Tạo lịch
+                  <Plus className="w-4 h-4 mr-2" /> Create Schedule
                 </Button>
               )}
             </div>
@@ -575,7 +575,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                         <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold">{label.slice(0, 1)}</div>
                         <div className="text-left">
                           <h4 className="font-bold text-gray-900">{label}</h4>
-                          <p className="text-xs text-gray-500">{emp?.position || 'Nhân viên'} • {block.rows.length} ca</p>
+                          <p className="text-xs text-gray-500">{emp?.position || 'Employee'} • {block.rows.length} shifts</p>
                         </div>
                       </div>
                       <ChevronDown className={cn("w-5 h-5 text-gray-400 transition-transform", expanded && "rotate-180")} />
@@ -607,7 +607,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                   <div className="flex justify-between items-end">
                     <div>
                       <p className={cn("text-lg font-bold leading-tight", row.status === 'leave' ? "text-red-700" : "text-gray-900")}>{row.shift}</p>
-                      {row.status === 'today' && !row.isLeave && <p className="text-[10px] text-orange-600 font-bold mt-1">Hôm nay</p>}
+                      {row.status === 'today' && !row.isLeave && <p className="text-[10px] text-orange-600 font-bold mt-1">Today</p>}
                     </div>
                     {isAdmin && scheduleScope === 'self' && (
                       <DropdownMenu>
@@ -616,7 +616,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                           <DropdownMenuItem onClick={() => {
                             const day = currentWeeklySchedule?.days.find(d => d.dayOfWeek === row.dayOfWeek);
                             if (day) { setEditingDay({ ...day }); setIsEditDayModalOpen(true); }
-                          }}><Pencil className="w-4 h-4 mr-2" /> Sửa</DropdownMenuItem>
+                          }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
@@ -624,30 +624,30 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                 </div>
               ))}
             </div>
-          ) : <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed text-gray-400">Không có lịch làm việc tuần này</div>}
+          ) : <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed text-gray-400">No work schedule this week</div>}
         </div>
       )}
 
       {/* Modals */}
       <Dialog open={isCreateScheduleModalOpen} onOpenChange={setIsCreateScheduleModalOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Tạo lịch làm việc</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Create Work Schedule</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmitSchedule} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nhân viên</Label>
+                <Label>Employee</Label>
                 <Select value={scheduleForm.userId} onValueChange={v => setScheduleForm(p => ({ ...p, userId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Chọn nhân viên" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                   <SelectContent>{employees.map(e => <SelectItem key={e.id} value={e.id}>{getEmployeeDisplayLabel(e)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2"><Label>Từ ngày</Label><Input type="date" value={scheduleForm.weekStartDate} onChange={e => setScheduleForm(p => ({ ...p, weekStartDate: e.target.value }))} /></div>
-                <div className="space-y-2"><Label>Đến ngày</Label><Input type="date" value={scheduleForm.weekEndDate} onChange={e => setScheduleForm(p => ({ ...p, weekEndDate: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>From date</Label><Input type="date" value={scheduleForm.weekStartDate} onChange={e => setScheduleForm(p => ({ ...p, weekStartDate: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>To date</Label><Input type="date" value={scheduleForm.weekEndDate} onChange={e => setScheduleForm(p => ({ ...p, weekEndDate: e.target.value }))} /></div>
               </div>
             </div>
             <div className="space-y-3">
-              <Label className="font-bold">Lịch trình chi tiết</Label>
+              <Label className="font-bold">Detailed Schedule</Label>
               <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-2">
                 {scheduleForm.days.map(day => (
                   <div key={day.dayOfWeek} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50">
@@ -667,8 +667,8 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsCreateScheduleModalOpen(false)}>Hủy</Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-purple-600"> {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Tạo lịch'}</Button>
+              <Button type="button" variant="ghost" onClick={() => setIsCreateScheduleModalOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={isSubmitting} className="bg-purple-600"> {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Schedule'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -676,34 +676,34 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
 
       <Dialog open={isEditDayModalOpen} onOpenChange={setIsEditDayModalOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Sửa ca làm việc</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit Work Shift</DialogTitle></DialogHeader>
           {editingDay && (
             <form onSubmit={async (e) => {
               e.preventDefault();
               if (!currentWeeklySchedule) return;
               try {
                 await weeklyScheduleService.updateWeeklyScheduleDays(currentWeeklySchedule.id, [editingDay]);
-                toast.success('Cập nhật thành công');
+                toast.success('Update successful');
                 setIsEditDayModalOpen(false);
                 fetchWeeklyScheduleForUser(viewingUserId || user.id);
-              } catch (err) { toast.error('Thất bại'); }
+              } catch (err) { toast.error('Failed'); }
             }} className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-bold">{dayNames[editingDay.dayOfWeek === 7 ? 0 : editingDay.dayOfWeek]}</span>
                 <div className="flex items-center gap-2">
                   <Checkbox checked={editingDay.isWorking} onCheckedChange={v => setEditingDay(p => p ? { ...p, isWorking: !!v } : p)} />
-                  <Label className="text-sm">Làm việc</Label>
+                  <Label className="text-sm">Working</Label>
                 </div>
               </div>
               {editingDay.isWorking && (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1"><Label>Giờ vào</Label><Input type="time" value={editingDay.startTime || ''} onChange={e => setEditingDay(p => p ? { ...p, startTime: e.target.value } : p)} /></div>
-                  <div className="space-y-1"><Label>Giờ ra</Label><Input type="time" value={editingDay.endTime || ''} onChange={e => setEditingDay(p => p ? { ...p, endTime: e.target.value } : p)} /></div>
+                  <div className="space-y-1"><Label>Check in</Label><Input type="time" value={editingDay.startTime || ''} onChange={e => setEditingDay(p => p ? { ...p, startTime: e.target.value } : p)} /></div>
+                  <div className="space-y-1"><Label>Check out</Label><Input type="time" value={editingDay.endTime || ''} onChange={e => setEditingDay(p => p ? { ...p, endTime: e.target.value } : p)} /></div>
                 </div>
               )}
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsEditDayModalOpen(false)}>Hủy</Button>
-                <Button type="submit" className="bg-purple-600">Lưu</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsEditDayModalOpen(false)}>Cancel</Button>
+                <Button type="submit" className="bg-purple-600">Save</Button>
               </DialogFooter>
             </form>
           )}
@@ -712,27 +712,27 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
 
       <Dialog open={isCreateLeaveModalOpen} onOpenChange={setIsCreateLeaveModalOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Tạo đơn xin nghỉ</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Create Leave Request</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmitLeave} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label>Từ ngày</Label><Input type="date" value={leaveForm.startDate} onChange={e => setLeaveForm(p => ({ ...p, startDate: e.target.value }))} required /></div>
-              <div className="space-y-1"><Label>Đến ngày</Label><Input type="date" value={leaveForm.endDate} onChange={e => setLeaveForm(p => ({ ...p, endDate: e.target.value }))} required /></div>
+              <div className="space-y-1"><Label>From date</Label><Input type="date" value={leaveForm.startDate} onChange={e => setLeaveForm(p => ({ ...p, startDate: e.target.value }))} required /></div>
+              <div className="space-y-1"><Label>To date</Label><Input type="date" value={leaveForm.endDate} onChange={e => setLeaveForm(p => ({ ...p, endDate: e.target.value }))} required /></div>
             </div>
             <div className="space-y-1">
-              <Label>Loại nghỉ</Label>
+              <Label>Leave type</Label>
               <Select value={leaveForm.type} onValueChange={v => setLeaveForm(p => ({ ...p, type: v as any }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ANNUAL">Nghỉ phép năm</SelectItem>
-                  <SelectItem value="SICK">Nghỉ ốm</SelectItem>
-                  <SelectItem value="UNPAID">Nghỉ không lương</SelectItem>
+                  <SelectItem value="ANNUAL">Annual leave</SelectItem>
+                  <SelectItem value="SICK">Sick leave</SelectItem>
+                  <SelectItem value="UNPAID">Unpaid leave</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Lý do</Label><Input placeholder="Lý do nghỉ..." value={leaveForm.reason} onChange={e => setLeaveForm(p => ({ ...p, reason: e.target.value }))} required /></div>
+            <div className="space-y-1"><Label>Reason</Label><Input placeholder="Leave reason..." value={leaveForm.reason} onChange={e => setLeaveForm(p => ({ ...p, reason: e.target.value }))} required /></div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsCreateLeaveModalOpen(false)}>Hủy</Button>
-              <Button type="submit" disabled={isSubmittingLeave} className="bg-blue-600">Gửi đơn</Button>
+              <Button type="button" variant="ghost" onClick={() => setIsCreateLeaveModalOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={isSubmittingLeave} className="bg-blue-600">Submit Request</Button>
             </DialogFooter>
           </form>
         </DialogContent>

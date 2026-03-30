@@ -8,24 +8,24 @@ export function usePermissions() {
   const user = useStoredUser();
 
   /**
-   * Kiểm tra xem người dùng có một quyền cụ thể hay không (theo code hoặc name).
-   * @param permissionCodeOrName Mã (code) hoặc Tên (name) của quyền.
+   * Check if user has a specific permission (by code or name).
+   * @param permissionCodeOrName Code or Name of permission.
    * @returns boolean
    */
   const hasPermission = (permissionCodeOrName: string): boolean => {
     if (isAdminRoleName(user.role)) return true;
     
-    // Tìm thông tin quyền trong SYSTEM_FUNCTIONS
+    // Find permission info in SYSTEM_FUNCTIONS
     const func = SYSTEM_FUNCTIONS.find(
       f => f.code === permissionCodeOrName || f.name === permissionCodeOrName
     );
 
-    // Nếu không tìm thấy quyền trong hệ thống, vẫn thử check trực tiếp trong user.permissions
+    // If permission not found in system, still try to check directly in user.permissions
     if (!func) {
       return user.permissions?.includes(permissionCodeOrName) || false;
     }
 
-    // Kiểm tra xem user có code hoặc name của quyền này không
+    // Check if user has code or name of this permission
     return (
       user.permissions?.includes(func.code) || 
       user.permissions?.includes(func.name) || 
@@ -34,8 +34,8 @@ export function usePermissions() {
   };
 
   /**
-   * Kiểm tra xem người dùng có bất kỳ quyền nào trong một module hay không.
-   * @param module Tên module (ví dụ: 'USER', 'ROLE').
+   * Check if user has any permission in a module.
+   * @param module Module name (e.g. 'USER', 'ROLE').
    * @returns boolean
    */
   const hasModuleAccess = (module: string): boolean => {

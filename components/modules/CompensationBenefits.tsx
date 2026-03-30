@@ -27,7 +27,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const [userRoleId, setUserRoleId] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(false);
 
-  // Admin UI: chọn nhân viên (tìm theo ID / tên / email) để xem lương
+  // Admin UI: select employee (search by ID / name / email) to view salary
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('me');
@@ -72,7 +72,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(objectUrl);
-      toast.success('Đã tải phiếu lương thành công');
+      toast.success('Payslip downloaded successfully');
     }
   };
 
@@ -83,7 +83,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     try {
       await triggerPdfBlob(targetUserId, payslipMonth, '', 'view');
     } catch (error: any) {
-      toast.error('Không thể xem phiếu lương', { description: error.message || 'Vui lòng thử lại sau' });
+      toast.error('Cannot view payslip', { description: error.message || 'Please try again later' });
     } finally {
       setIsPdfLoading(null);
     }
@@ -97,7 +97,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       const empName = (user as any).name || user.email || targetUserId;
       await triggerPdfBlob(targetUserId, payslipMonth, `phieu-luong-thang${payslipMonth}-${empName}.pdf`, 'download');
     } catch (error: any) {
-      toast.error('Không thể tải phiếu lương', { description: error.message || 'Vui lòng thử lại sau' });
+      toast.error('Cannot download payslip', { description: error.message || 'Please try again later' });
     } finally {
       setIsPdfLoading(null);
     }
@@ -108,7 +108,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     try {
       await triggerPdfBlob(emp.id, exportMonth, '', 'view');
     } catch (error: any) {
-      toast.error(`Không thể xem phiếu lương của ${emp.fullName || emp.email}`, { description: error.message });
+      toast.error(`Cannot view payslip of ${emp.fullName || emp.email}`, { description: error.message });
     } finally {
       setRowLoading(emp.id, null);
     }
@@ -120,7 +120,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       const name = emp.fullName || emp.email || emp.id;
       await triggerPdfBlob(emp.id, exportMonth, `phieu-luong-thang${exportMonth}-${name}.pdf`, 'download');
     } catch (error: any) {
-      toast.error(`Không thể tải phiếu lương của ${emp.fullName || emp.email}`, { description: error.message });
+      toast.error(`Cannot download payslip of ${emp.fullName || emp.email}`, { description: error.message });
     } finally {
       setRowLoading(emp.id, null);
     }
@@ -131,7 +131,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   }, [employees, selectedEmployeeId]);
 
   const payrollEmployeeSelectLabel = useMemo(() => {
-    if (selectedEmployeeId === 'me') return 'Tài khoản của tôi';
+    if (selectedEmployeeId === 'me') return 'My Account';
     const emp = employees.find((e) => e.id === selectedEmployeeId);
     if (!emp) return selectedEmployeeId;
     const label = getEmployeeDisplayLabel(emp);
@@ -139,7 +139,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     return sub ? `${label} (${sub})` : label;
   }, [selectedEmployeeId, employees]);
 
-  // Lấy role id từ JWT token hoặc user.role
+  // Get role id from JWT token or user.role
   useEffect(() => {
     const fetchUserRole = async () => {
       setIsLoadingRole(true);
@@ -150,7 +150,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           return;
         }
 
-        // Fallback: user.role có thể đã là roleId UUID
+        // Fallback: user.role might already be roleId UUID
         setUserRoleId(normalizeRoleId(user.role));
       } catch (error) {
         console.error('Error fetching user role:', error);
@@ -166,7 +166,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     return isAdminRoleId(userRoleId) || (user?.role && typeof user.role === 'string' && ['admin', 'system admin', 'hr manager'].includes(user.role.toLowerCase()));
   }, [userRoleId, user.role]);
 
-  // Load employees cho dropdown khi admin vào tab salary
+  // Load employees for dropdown when admin enters salary tab
   useEffect(() => {
     if (!isAdmin) return;
     if (activeTab !== 'salary') return;
@@ -192,8 +192,8 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         setEmployees(flattened);
       } catch (error: any) {
         console.error('Error loading employees for payroll filter:', error);
-        toast.error('Không thể tải danh sách nhân viên', {
-          description: error.message || 'Vui lòng thử lại sau',
+        toast.error('Cannot load employees', {
+          description: error.message || 'Please try again later',
         });
         setEmployees([]);
       } finally {
@@ -218,8 +218,8 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         setPayroll(data);
       } catch (error: any) {
         console.error('Error fetching payroll:', error);
-        toast.error('Không thể tải dữ liệu lương', {
-          description: error.message || 'Vui lòng thử lại sau',
+        toast.error('Cannot load salary data', {
+          description: error.message || 'Please try again later',
         });
         setPayroll(null);
       } finally {
@@ -227,7 +227,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       }
     };
 
-    // Non-admin: chỉ cho xem lương của chính mình
+    // Non-admin: only allow viewing own salary
     if (!isAdmin && selectedEmployeeId !== 'me') {
       setSelectedEmployeeId('me');
       return;
@@ -236,7 +236,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     loadPayroll();
   }, [activeTab, selectedEmployeeId, selectedMonth, user.id, isAdmin]);
 
-  // Admin: load bảng lương tháng để hiển thị dropdown "Tên - username - thực nhận"
+  // Admin: load monthly payroll table to display dropdown "Name - username - net pay"
   useEffect(() => {
     if (!isAdmin) return;
     if (activeTab !== 'salary') return;
@@ -248,7 +248,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         setMonthRows(rows || []);
       } catch (error: any) {
         console.error('Error fetching payroll month rows:', error);
-        // Không toast liên tục, chỉ log; UI sẽ fallback sang dropdown select nhân viên nếu cần
+        // Avoid continuous toasts, just log; UI will fallback to dropdown select employee if needed
         setMonthRows([]);
       } finally {
         setIsLoadingMonthRows(false);
@@ -264,8 +264,8 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     setIsCalculating(true);
     try {
       await payrollService.calculatePayroll(selectedMonth);
-      toast.success(`Đã yêu cầu tính toán bảng lương tháng ${selectedMonth}`, {
-        description: 'Dữ liệu đang được khởi tạo, vui lòng đợi trong giây lát.'
+      toast.success(`Salary calculation requested for month ${selectedMonth}`, {
+        description: 'Data is being initialized, please wait a moment.'
       });
       // Refetch sau khi generate
       setTimeout(async () => {
@@ -282,8 +282,8 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         }
       }, 2000);
     } catch (error: any) {
-      toast.error('Lỗi khi tính lương', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Error calculating salary', {
+        description: error.message || 'Please try again later',
       });
     } finally {
       setIsCalculating(false);
@@ -302,7 +302,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   }, [isAdmin, monthRows, payroll]);
 
   const salaryData = useMemo(() => {
-    // Nếu đã có payroll từ API thì dùng, không thì fallback mock
+    // If API returns payroll, use it, else fallback to mock
     if (payroll && payroll.workingDays !== null) {
       const adjustments = payroll.adjustments || [];
       const add = adjustments
@@ -371,26 +371,26 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   const benefits = [
     {
       id: '1',
-      name: 'Bảo hiểm y tế cao cấp',
+      name: 'Premium Health Insurance',
       type: 'Health Insurance',
-      provider: 'Bảo Việt',
-      coverage: '500,000,000 VNĐ/năm',
+      provider: 'Bao Viet',
+      coverage: '500,000,000 VND/year',
       status: 'active',
     },
     {
       id: '2',
-      name: 'Bảo hiểm nhân thọ',
+      name: 'Life Insurance',
       type: 'Life Insurance',
       provider: 'Prudential',
-      coverage: '1,000,000,000 VNĐ',
+      coverage: '1,000,000,000 VND',
       status: 'active',
     },
     {
       id: '3',
-      name: 'Khám sức khỏe định kỳ',
+      name: 'Regular Health Checkup',
       type: 'Health Checkup',
       provider: 'Vinmec',
-      coverage: 'Gói Premium',
+      coverage: 'Premium Package',
       status: 'scheduled',
     },
   ];
@@ -405,7 +405,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     setTimeout(() => {
       setStepUpVerified(true);
       setRequireStepUp(false);
-      alert('Phiếu lương đã được tải về (được mã hóa bằng mật khẩu riêng)');
+      alert('Payslip downloaded (encrypted with your password)');
     }, 1000);
   };
 
@@ -421,13 +421,13 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             <h2 className="text-2xl font-bold text-gray-900">Compensation & Benefits</h2>
           </div>
           <p className="text-gray-600">
-            Lương & Phúc lợi - Khu vực rủi ro cao nhất (High Impact)
+            Compensation & Benefits - Highest Risk Area (High Impact)
           </p>
         </div>
         {isLoadingRole ? (
           <div className="text-xs text-gray-500 flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-gray-300" />
-            Đang kiểm tra quyền...
+            Checking permissions...
           </div>
         ) : isAdmin ? (
           <Button type="button" variant="outline" className="gap-2">
@@ -443,9 +443,9 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       <div className="border-b border-gray-200">
         <div className="flex gap-6">
           {[
-            { id: 'salary', label: 'Tính lương & Thuế', icon: DollarSign },
-            { id: 'payslip', label: 'Phiếu lương', icon: FileText },
-            { id: 'benefits', label: 'Phúc lợi & Bảo hiểm', icon: Heart },
+            { id: 'salary', label: 'Salary & Tax', icon: DollarSign },
+            { id: 'payslip', label: 'Payslip', icon: FileText },
+            { id: 'benefits', label: 'Benefits & Insurance', icon: Heart },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -470,20 +470,20 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       {activeTab === 'salary' && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            Chi tiết lương tháng {payroll?.month || selectedMonth}/{new Date().getFullYear()}
+            Salary details for Month {payroll?.month || selectedMonth}/{new Date().getFullYear()}
           </h3>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <div className="text-sm text-gray-600 min-h-9 flex items-center italic">
-              {isLoadingPayroll ? 'Đang tải dữ liệu lương...' : payroll ? `Dữ liệu tháng ${payroll.month}` : 'Chọn tháng để xem dữ liệu'}
+              {isLoadingPayroll ? 'Loading salary data...' : payroll ? `Data for Month ${payroll.month}` : 'Select a month to view data'}
             </div>
             
             <div className="flex flex-wrap items-end gap-3">
               {isAdmin && (
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Nhân viên</Label>
+                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Employee</Label>
                   {isLoadingEmployees ? (
-                    <div className="text-xs text-gray-500 h-9 flex items-center px-1">Đang tải...</div>
+                    <div className="text-xs text-gray-500 h-9 flex items-center px-1">Loading...</div>
                   ) : (
                     <Popover
                       modal={false}
@@ -507,9 +507,9 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                         align="start"
                       >
                         <Command>
-                          <CommandInput className="h-8 text-sm" placeholder="ID, tên, email…" />
+                          <CommandInput className="h-8 text-sm" placeholder="ID, name, email…" />
                           <CommandList className="max-h-[min(240px,50vh)]">
-                            <CommandEmpty>Không tìm thấy nhân viên.</CommandEmpty>
+                            <CommandEmpty>Employee not found.</CommandEmpty>
                             <CommandGroup>
                               <CommandItem
                                 className="text-sm"
@@ -525,7 +525,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                                     selectedEmployeeId === 'me' ? 'opacity-100' : 'opacity-0',
                                   )}
                                 />
-                                Tài khoản của tôi
+                                My Account
                               </CommandItem>
                               {employees.map((emp) => {
                                 const label = getEmployeeDisplayLabel(emp);
@@ -568,18 +568,18 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
               )}
               
               <div className="flex flex-col gap-1">
-                <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tháng</Label>
+                <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Month</Label>
                 <div className="flex items-center gap-2">
                   <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                     <SelectTrigger className="h-9 w-24 text-sm bg-white border-slate-200 hover:border-indigo-500 rounded-lg">
-                      <SelectValue placeholder="Tháng" />
+                      <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 12 }).map((_, i) => {
                         const m = String(i + 1);
                         return (
                           <SelectItem key={m} value={m}>
-                            Tháng {m}
+                            Month {m}
                           </SelectItem>
                         );
                       })}
@@ -593,7 +593,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                       className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 text-xs font-bold gap-2 rounded-lg shadow-sm"
                     >
                       {isCalculating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
-                      Tính lương tháng {selectedMonth}
+                      Calculate Month {selectedMonth} Salary
                     </Button>
                   )}
                 </div>
@@ -605,36 +605,36 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in duration-300">
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
               <div>
-                <h4 className="text-sm font-bold text-amber-900">Chưa có dữ liệu lương chi tiết</h4>
+                <h4 className="text-sm font-bold text-amber-900">No detailed salary data</h4>
                 <p className="text-xs text-amber-700 mt-1">
-                  Hệ thống ghi nhận một số nhân viên chưa được tính lương trong tháng {selectedMonth}. 
-                  Vui lòng bấm <strong>"Tính lương tháng {selectedMonth}"</strong> để bắt đầu quá trình tính toán tự động dựa trên ngày công và nghỉ phép.
+                  The system recorded some employees without salary calculation for month {selectedMonth}. 
+                  Please click <strong>"Calculate Month {selectedMonth} Salary"</strong> to start the auto-calculation process based on working and leave days.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Admin: Bảng tổng hợp lương tháng */}
+          {/* Admin: Monthly Salary Summary Table */}
           {isAdmin && monthRows.length > 0 && (
             <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm mb-6">
               <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-indigo-500" />
-                  Bảng tổng hợp lương tháng {selectedMonth}
+                  Salary Summary Table Month {selectedMonth}
                 </h4>
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">
-                  {monthRows.length} bản ghi
+                  {monthRows.length} records
                 </span>
               </div>
               <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-slate-50/80 backdrop-blur-sm">
-                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhân viên</th>
-                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ngày công</th>
-                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Lương cơ bản</th>
-                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thực nhận</th>
-                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Thao tác</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Working Days</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Base Salary</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Net Salary</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -673,7 +673,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                                 : 'bg-white text-indigo-600 border-slate-200 hover:border-indigo-600'
                             }`}
                           >
-                            {selectedEmployeeId === row.user.id ? 'Đang xem' : 'Chi tiết'}
+                            {selectedEmployeeId === row.user.id ? 'Viewing' : 'Details'}
                           </button>
                         </td>
                       </tr>
@@ -687,13 +687,13 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           {isAdmin && selectedEmployeeId !== 'me' && selectedEmployee && (
             <div className="flex items-center justify-between mb-4 animate-in slide-in-from-left duration-300">
               <div className="text-sm text-slate-600">
-                Đang xem chi tiết lương của: <span className="font-bold text-slate-900 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">{selectedEmployee.fullName || selectedEmployee.email}</span>
+                Viewing salary details of: <span className="font-bold text-slate-900 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">{selectedEmployee.fullName || selectedEmployee.email}</span>
               </div>
               <button 
                 onClick={() => setSelectedEmployeeId('me')}
                 className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors"
               >
-                Hủy xem chi tiết
+                Cancel view details
               </button>
             </div>
           )}
@@ -701,15 +701,15 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           {payroll && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="border border-gray-200 rounded-lg p-4">
-                <div className="text-xs text-gray-500 mb-1">Ngày công</div>
+                <div className="text-xs text-gray-500 mb-1">Working Days</div>
                 <div className="text-lg font-semibold text-gray-900">{payroll.workingDays}</div>
               </div>
               <div className="border border-gray-200 rounded-lg p-4">
-                <div className="text-xs text-gray-500 mb-1">Ngày nghỉ</div>
+                <div className="text-xs text-gray-500 mb-1">Leave Days</div>
                 <div className="text-lg font-semibold text-gray-900">{payroll.leaveDays}</div>
               </div>
               <div className="border border-gray-200 rounded-lg p-4">
-                <div className="text-xs text-gray-500 mb-1">Lương/ngày</div>
+                <div className="text-xs text-gray-500 mb-1">Salary/day</div>
                 <div className="text-lg font-semibold text-gray-900">{formatCurrency(payroll.salaryPerDay)}</div>
               </div>
             </div>
@@ -717,7 +717,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
 
           {payroll && payroll.leaves && payroll.leaves.length > 0 && (
             <div className="border border-gray-200 rounded-lg p-4 bg-slate-50/80">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Chi tiết nghỉ phép trong tháng</h4>
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Leave Details in Month</h4>
               <ul className="space-y-2 text-sm text-gray-700">
                 {payroll.leaves.map((lv) => (
                   <li
@@ -741,22 +741,22 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             {/* Gross Salary */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 border-b border-gray-200">
-              <h4 className="text-sm font-medium text-gray-600 mb-3">Thu nhập</h4>
+              <h4 className="text-sm font-medium text-gray-600 mb-3">Earnings</h4>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-700">Lương cơ bản</span>
+                  <span className="text-gray-700">Base Salary</span>
                   <span className="font-medium text-gray-900">{formatCurrency(salaryData.baseSalary)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-700">Phụ cấp</span>
+                  <span className="text-gray-700">Allowances</span>
                   <span className="font-medium text-gray-900">{formatCurrency(salaryData.allowances)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-700">Thưởng</span>
+                  <span className="text-gray-700">Bonuses</span>
                   <span className="font-medium text-gray-900">{formatCurrency(salaryData.bonuses)}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-green-200">
-                  <span className="font-semibold text-gray-900">Tổng thu nhập</span>
+                  <span className="font-semibold text-gray-900">Total Earnings</span>
                   <span className="font-bold text-green-600">{formatCurrency(salaryData.totalGross)}</span>
                 </div>
               </div>
@@ -764,18 +764,18 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
 
             {/* Deductions */}
             <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 border-b border-gray-200">
-              <h4 className="text-sm font-medium text-gray-600 mb-3">Khấu trừ</h4>
+              <h4 className="text-sm font-medium text-gray-600 mb-3">Deductions</h4>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-700">Bảo hiểm (XH + YT + TN)</span>
+                  <span className="text-gray-700">Insurance (SI + HI + UI)</span>
                   <span className="font-medium text-gray-900">{formatCurrency(salaryData.insurance)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-700">Thuế TNCN</span>
+                  <span className="text-gray-700">PIT (Tax)</span>
                   <span className="font-medium text-gray-900">{formatCurrency(salaryData.tax)}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-orange-200">
-                  <span className="font-semibold text-gray-900">Tổng khấu trừ</span>
+                  <span className="font-semibold text-gray-900">Total Deductions</span>
                   <span className="font-bold text-orange-600">{formatCurrency(salaryData.totalDeductions)}</span>
                 </div>
               </div>
@@ -784,7 +784,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             {/* Net Salary */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-gray-900">Thực nhận</span>
+                <span className="text-lg font-bold text-gray-900">Net Salary</span>
                 <span className="text-2xl font-bold text-blue-600">{formatCurrency(salaryData.netSalary)}</span>
               </div>
             </div>
@@ -794,11 +794,11 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             <div className="flex gap-3">
               <button className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2">
                 <Lock className="w-4 h-4" />
-                Chốt lương (Yêu cầu Step-up Auth)
+                Finalize Salary (Requires Step-up Auth)
               </button>
               <button className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2">
                 <FileText className="w-4 h-4" />
-                Xuất file chuyển khoản (Yêu cầu Step-up Auth)
+                Export bank transfer file (Requires Step-up Auth)
               </button>
             </div>
           ) : null}
@@ -808,28 +808,28 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
       {activeTab === 'payslip' && (
         <div className="space-y-8">
 
-          {/* ===== Màn 1: Phiếu lương của tôi ===== */}
+          {/* ===== Screen 1: My Payslip ===== */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
                 <FileText className="w-4 h-4 text-blue-600" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Phiếu lương của tôi</h3>
+              <h3 className="text-base font-bold text-gray-900">My Payslip</h3>
             </div>
 
             <div className="border border-gray-200 rounded-xl p-5 bg-gradient-to-br from-blue-50 to-indigo-50">
               {/* Month selector */}
               <div className="flex flex-wrap items-end gap-3 mb-5">
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tháng</Label>
+                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Month</Label>
                   <Select value={payslipMonth} onValueChange={setPayslipMonth}>
                     <SelectTrigger className="h-9 w-28 text-sm bg-white border-slate-200 hover:border-indigo-500 rounded-lg">
-                      <SelectValue placeholder="Tháng" />
+                      <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 12 }).map((_, i) => {
                         const m = String(i + 1);
-                        return <SelectItem key={m} value={m}>Tháng {m}</SelectItem>;
+                        return <SelectItem key={m} value={m}>Month {m}</SelectItem>;
                       })}
                     </SelectContent>
                   </Select>
@@ -843,7 +843,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900">
-                    Phiếu lương tháng {payslipMonth}/{new Date().getFullYear()}
+                    Payslip for Month {payslipMonth}/{new Date().getFullYear()}
                   </h4>
                   <p className="text-sm text-gray-500 mt-0.5">{(user as any).name || user.email}</p>
                 </div>
@@ -856,7 +856,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
                 >
                   {isPdfLoading === 'view' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                  Xem phiếu lương
+                  View Payslip
                 </button>
                 <button
                   onClick={handleDownloadPayslipPdf}
@@ -864,13 +864,13 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                   className="flex items-center gap-2 px-5 py-2.5 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
                 >
                   {isPdfLoading === 'download' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Tải xuống PDF
+                  Download PDF
                 </button>
               </div>
             </div>
           </div>
 
-          {/* ===== Màn 2: Xuất lương nhân viên (admin only) ===== */}
+          {/* ===== Screen 2: Export Employee Salary (admin only) ===== */}
           {isAdmin && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -878,20 +878,20 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                   <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
                     <Download className="w-4 h-4 text-indigo-600" />
                   </div>
-                  <h3 className="text-base font-bold text-gray-900">Xuất phiếu lương nhân viên</h3>
+                  <h3 className="text-base font-bold text-gray-900">Export Employee Payslips</h3>
                 </div>
 
                 {/* Month selector for export */}
                 <div className="flex items-center gap-2">
-                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Tháng</Label>
+                  <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Month</Label>
                   <Select value={exportMonth} onValueChange={setExportMonth}>
                     <SelectTrigger className="h-9 w-28 text-sm bg-white border-slate-200 hover:border-indigo-500 rounded-lg">
-                      <SelectValue placeholder="Tháng" />
+                      <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 12 }).map((_, i) => {
                         const m = String(i + 1);
-                        return <SelectItem key={m} value={m}>Tháng {m}</SelectItem>;
+                        return <SelectItem key={m} value={m}>Month {m}</SelectItem>;
                       })}
                     </SelectContent>
                   </Select>
@@ -901,18 +901,18 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
                 {isLoadingEmployees ? (
                   <div className="flex items-center justify-center py-12 text-slate-500 gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> Đang tải danh sách nhân viên...
+                    <Loader2 className="w-5 h-5 animate-spin" /> Loading employees...
                   </div>
                 ) : employees.length === 0 ? (
-                  <div className="py-12 text-center text-slate-400 text-sm">Không có nhân viên nào.</div>
+                  <div className="py-12 text-center text-slate-400 text-sm">No employees found.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhân viên</th>
-                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phòng ban</th>
-                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Phiếu lương tháng {exportMonth}</th>
+                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
+                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</th>
+                          <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Payslip Month {exportMonth}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -934,20 +934,20 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                                   <button
                                     onClick={() => handleRowViewPdf(emp)}
                                     disabled={rowLoading !== null}
-                                    title="Xem phiếu lương"
+                                    title="View payslip"
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold"
                                   >
                                     {rowLoading === 'view' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
-                                    Xem
+                                    View
                                   </button>
                                   <button
                                     onClick={() => handleRowDownloadPdf(emp)}
                                     disabled={rowLoading !== null}
-                                    title="Tải xuống PDF"
+                                    title="Download PDF"
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold shadow-sm"
                                   >
                                     {rowLoading === 'download' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                                    Tải PDF
+                                    Download PDF
                                   </button>
                                 </div>
                               </td>
@@ -967,7 +967,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
 
       {activeTab === 'benefits' && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Gói phúc lợi của bạn</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Your Benefits Package</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {benefits.map((benefit) => (
@@ -981,30 +981,30 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                       ? 'bg-green-100 text-green-700' 
                       : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {benefit.status === 'active' ? 'Đang hoạt động' : 'Đã lên lịch'}
+                    {benefit.status === 'active' ? 'Active' : 'Scheduled'}
                   </span>
                 </div>
                 <h4 className="font-medium text-gray-900 mb-1">{benefit.name}</h4>
                 <p className="text-sm text-gray-600 mb-2">{benefit.type}</p>
                 <div className="text-xs text-gray-500 space-y-1">
-                  <p>Nhà cung cấp: {benefit.provider}</p>
-                  <p>Mức bảo hiểm: {benefit.coverage}</p>
+                  <p>Provider: {benefit.provider}</p>
+                  <p>Coverage: {benefit.coverage}</p>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="border border-gray-200 rounded-lg p-6">
-            <h4 className="font-semibold text-gray-900 mb-4">Khám sức khỏe định kỳ</h4>
+            <h4 className="font-semibold text-gray-900 mb-4">Regular Health Checkup</h4>
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900 mb-1">Lịch khám sắp tới</p>
+                  <p className="font-medium text-gray-900 mb-1">Upcoming Appointment</p>
                   <p className="text-sm text-gray-600">25/03/2024 - 09:00 AM</p>
-                  <p className="text-sm text-gray-600">Vinmec Times City, Hà Nội</p>
+                  <p className="text-sm text-gray-600">Vinmec Times City, Hanoi</p>
                 </div>
                 <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm">
-                  Xem chi tiết
+                  View Details
                 </button>
               </div>
             </div>
@@ -1021,17 +1021,17 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                 <Shield className="w-8 h-8 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Yêu cầu xác thực bổ sung
+                Additional Authentication Required
               </h3>
               <p className="text-gray-600">
-                Để xem phiếu lương, vui lòng xác thực lại bằng MFA
+                To view payslip, please re-authenticate with MFA
               </p>
             </div>
 
             <div className="mb-6">
               <input
                 type="text"
-                placeholder="Nhập mã MFA (6 số)"
+                placeholder="Enter MFA Code (6 digits)"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-xl tracking-widest"
                 maxLength={6}
               />
@@ -1042,13 +1042,13 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                 onClick={() => setRequireStepUp(false)}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
-                Hủy
+                Cancel
               </button>
               <button
                 onClick={handleStepUpAuth}
                 className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
-                Xác nhận
+                Confirm
               </button>
             </div>
           </div>

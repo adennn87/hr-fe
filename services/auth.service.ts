@@ -21,12 +21,12 @@ export interface RegisterPayload {
   citizen_Id?: string;
   roleId?: string;
   mfaEnabled?: boolean;
-  taxCode?: string; // Thêm trường taxCode tùy chọn
+  taxCode?: string; // Add optional taxCode field
   salaryPerDay?: number;
   adjustments?: AdjustmentPayload[];
 }
 
-// Định nghĩa kiểu dữ liệu trả về từ API Login
+// Define return type for Login API
 export interface LoginResponse {
   accessToken: string;
   user: {
@@ -47,16 +47,16 @@ export interface LoginResponse {
   };
 }
 
-// Định nghĩa kiểu dữ liệu cho payload Reset Password
+// Define payload type for Reset Password
 export interface ResetPasswordPayload {
   email: string;
-  otp: string;        // Mã OTP
+  otp: string;        // OTP code
   newPassword: string;
 }
 
 export const authService = {
   /**
-   * Đăng nhập
+   * Login
    * @param email 
    * @param password 
    */
@@ -70,16 +70,16 @@ export const authService = {
       body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
     });
 
-    // Map response từ API sang UserProfile format, map full_name -> fullName nếu backend trả về snake_case
+    // Map API response to UserProfile format, map full_name -> fullName if backend returns snake_case
     const userProfile: UserProfile = {
       id: response.user.id,
-      fullName: response.user.fullName || response.user.full_name || response.user.name || '', // Ưu tiên fullName từ DB
+      fullName: response.user.fullName || response.user.full_name || response.user.name || '', // Prioritize fullName from DB
       email: response.user.email,
-      role: response.user.role || response.user.roleId, // Ưu tiên role object
-      department: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
-      location: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
-      avatar: '', // API không trả về, sẽ để trống hoặc lấy từ profile sau
-      mfaEnabled: false, // Mặc định false, có thể cần check từ API hoặc profile
+      role: response.user.role || response.user.roleId, // Prioritize role object
+      department: '', // API does not return, leave empty or get from profile later
+      location: '', // API does not return, leave empty or get from profile later
+      avatar: '', // API does not return, leave empty or get from profile later
+      mfaEnabled: false, // Default false, might need to check from API or profile
       permissions: response.user.permissions || [],
     };
 
@@ -90,11 +90,11 @@ export const authService = {
   },
 
   /**
-   * Đăng ký tài khoản mới
-   * @param data Dữ liệu từ form đăng ký
+   * Register new account
+   * @param data Data from register form
    */
   async register(data: RegisterFormValues, recaptchaToken?: string | null) {
-    // Format gender từ 'male'/'female'/'other' thành 'Male'/'Female'/'Other' để khớp với API
+    // Format gender from 'male'/'female'/'other' to 'Male'/'Female'/'Other' to match API
     const genderMap: Record<string, string> = {
       'male': 'Male',
       'female': 'Female',
@@ -112,14 +112,14 @@ export const authService = {
       department: data.department,
       position: data.position,
       citizen_Id: data.citizen_Id,
-      taxCode: data.taxCode || undefined, // Gửi taxCode nếu có
+      taxCode: data.taxCode || undefined, // Send taxCode if available
       roleId: (data as any).roleId || undefined,
       salaryPerDay: data.salaryPerDay,
       adjustments: data.adjustments?.map(a => ({
     typeId: a.typeId,
     amount: a.amount,
     note: a.note || "",
-  })) || [], // nếu chưa có thì gửi mảng rỗng
+  })) || [], // send empty array if not available
     };
 
     const body: Record<string, unknown> = { ...payload };
@@ -132,7 +132,7 @@ export const authService = {
   },
 
   /**
-   * Gửi yêu cầu quên mật khẩu (Gửi OTP về email)
+   * Request forgot password (Send OTP to email)
    * @param email 
    */
   async forgotPassword(email: string, recaptchaToken?: string | null) {
@@ -145,8 +145,8 @@ export const authService = {
   },
 
   /**
-   * Đặt lại mật khẩu (Dùng cho màn hình ResetPassword)
-   * @param payload Gồm email, mã OTP và mật khẩu mới
+   * Reset password (For ResetPassword screen)
+   * @param payload Includes email, OTP code and new password
    */
   async resetPassword(payload: ResetPasswordPayload) {
     return fetchClient('/auth/reset-password', {
@@ -156,9 +156,9 @@ export const authService = {
   },
 
   /**
-   * Gửi OTP khi login (bước đầu tiên của login flow)
-   * @param email Email người dùng
-   * @param password Mật khẩu
+   * Send OTP on login (first step of login flow)
+   * @param email User email
+   * @param password Password
    */
   async loginOtp(email: string, password: string, recaptchaToken?: string | null) {
     const body: Record<string, unknown> = { email, password };
@@ -170,10 +170,10 @@ export const authService = {
   },
 
   /**
-   * Xác thực 2 bước (MFA) - Verify OTP và login
-   * @param code Mã OTP từ ứng dụng Authenticator/Email
-   * @param email Email người dùng
-   * @param password Mật khẩu (lấy từ sessionStorage)
+   * 2-Step Verification (MFA) - Verify OTP and login
+   * @param code OTP code from Authenticator app/Email
+   * @param email User email
+   * @param password Password (from sessionStorage)
    */
   async verifyMfa(code: string, email: string, password: string) {
     return fetchClient<LoginResponse>('/auth/login', {
@@ -183,8 +183,8 @@ export const authService = {
   },
 
   /**
-   * Lấy thông tin Profile chi tiết của người dùng hiện tại
-   * API endpoint: GET /users/profile (không có /api prefix)
+   * Get detailed Profile of current user
+   * API endpoint: GET /users/profile (without /api prefix)
    */
   async getProfile(): Promise<any> {
     const baseUrl = API_URL.replace('/api', '');
@@ -216,8 +216,8 @@ export const authService = {
   },
 
   /**
-   * Cập nhật thông tin Profile của người dùng hiện tại
-   * API endpoint: PATCH /users (không có /api prefix)
+   * Update Profile of current user
+   * API endpoint: PATCH /users (without /api prefix)
    */
   async updateProfile(data: any): Promise<any> {
     const baseUrl = API_URL.replace('/api', '');

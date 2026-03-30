@@ -33,8 +33,8 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
       setFormData(data);
     } catch (error: any) {
       console.error('Error fetching employee:', error);
-      toast.error('Không thể tải thông tin nhân sự', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Cannot load employee information', {
+        description: error.message || 'Please try again later',
       });
     } finally {
       setIsLoading(false);
@@ -46,14 +46,14 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
 
     try {
       await employeeService.updateEmployee(employeeId, formData);
-      toast.success('Cập nhật thông tin thành công');
+      toast.success('Information updated successfully');
       setIsEditing(false);
       await fetchEmployee(); // Refresh data
       onUpdate?.();
     } catch (error: any) {
       console.error('Error updating employee:', error);
-      toast.error('Không thể cập nhật thông tin', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Cannot update information', {
+        description: error.message || 'Please try again later',
       });
     }
   };
@@ -69,7 +69,7 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
       <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center">
         <div className="bg-white rounded-2xl p-8 shadow-2xl">
           <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto" />
-          <p className="mt-4 text-slate-500 text-center">Đang tải thông tin...</p>
+          <p className="mt-4 text-slate-500 text-center">Loading information...</p>
         </div>
       </div>
     );
@@ -79,8 +79,8 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
     return (
       <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center">
         <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md">
-          <p className="text-slate-900 font-bold mb-4">Không tìm thấy nhân sự</p>
-          <Button onClick={onClose} className="w-full">Đóng</Button>
+          <p className="text-slate-900 font-bold mb-4">Employee not found</p>
+          <Button onClick={onClose} className="w-full">Close</Button>
         </div>
       </div>
     );
@@ -106,7 +106,7 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
             <button
               onClick={() => setShowSensitiveData(!showSensitiveData)}
               className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-purple-600 transition-colors"
-              title={showSensitiveData ? 'Ẩn thông tin nhạy cảm' : 'Hiện thông tin nhạy cảm'}
+              title={showSensitiveData ? 'Hide sensitive information' : 'Show sensitive information'}
             >
               {showSensitiveData ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -117,7 +117,7 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
                 className="gap-2"
               >
                 <Edit className="w-4 h-4" />
-                Chỉnh sửa
+                Edit
               </Button>
             ) : (
               <div className="flex gap-2">
@@ -128,14 +128,14 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
                   }}
                   variant="outline"
                 >
-                  Hủy
+                  Cancel
                 </Button>
                 <Button
                   onClick={handleSave}
                   className="bg-purple-600 hover:bg-purple-700 gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  Lưu
+                  Save
                 </Button>
               </div>
             )}
@@ -150,15 +150,15 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
 
         {/* Content */}
         <div className="p-6 space-y-8">
-          {/* Thông tin cá nhân */}
+          {/* Personal Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <User className="w-5 h-5 text-purple-600" />
-              Thông tin cá nhân
+              Personal Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Họ và tên</Label>
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Full Name</Label>
                 {isEditing ? (
                   <Input
                     value={formData.fullName || ''}
@@ -188,30 +188,30 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <Phone className="w-3 h-3" />
-                  Số điện thoại
+                  Phone Number
                   {!showSensitiveData && <Lock className="w-3 h-3 text-amber-500" />}
                 </Label>
                 {isEditing ? (
-                  <Input
-                    value={formData.phoneNumber || ''}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    className="h-11"
-                  />
-                ) : (
-                  <p className="text-base font-bold text-slate-900">{maskData(employee.phoneNumber)}</p>
+                    <Input
+                      value={formData.phoneNumber || ''}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                      className="h-11"
+                    />
+                  ) : (
+                    <p className="text-base font-bold text-slate-900">{maskData(employee.phoneNumber ?? undefined)}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Giới tính</Label>
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Gender</Label>
                 {isEditing ? (
                   <select
                     value={formData.gender || ''}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                     className="flex h-11 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
                   >
-                    <option value="Male">Nam</option>
-                    <option value="Female">Nữ</option>
-                    <option value="Other">Khác</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
                   </select>
                 ) : (
                   <p className="text-base font-bold text-slate-900">{employee.gender || 'N/A'}</p>
@@ -220,7 +220,7 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  Ngày sinh
+                  Date of Birth
                 </Label>
                 {isEditing ? (
                   <Input
@@ -231,7 +231,7 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
                   />
                 ) : (
                   <p className="text-base font-bold text-slate-900">
-                    {employee.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
+                    {employee.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString('en-US') : 'N/A'}
                   </p>
                 )}
               </div>
@@ -242,43 +242,43 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
                   {!showSensitiveData && <Lock className="w-3 h-3 text-amber-500" />}
                 </Label>
                 {isEditing ? (
-                  <Input
-                    value={formData.citizen_Id || ''}
-                    onChange={(e) => setFormData({ ...formData, citizen_Id: e.target.value })}
-                    className="h-11"
-                    maxLength={12}
-                  />
-                ) : (
-                  <p className="text-base font-bold text-slate-900">{maskData(employee.citizen_Id)}</p>
+                    <Input
+                      value={formData.citizen_Id || ''}
+                      onChange={(e) => setFormData({ ...formData, citizen_Id: e.target.value })}
+                      className="h-11"
+                      maxLength={12}
+                    />
+                  ) : (
+                    <p className="text-base font-bold text-slate-900">{maskData(employee.citizen_Id ?? undefined)}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Thông tin công việc */}
+          {/* Work Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Briefcase className="w-5 h-5 text-purple-600" />
-              Thông tin công việc
+              Work Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <Building2 className="w-3 h-3" />
-                  Phòng ban
+                  Department
                 </Label>
                 {isEditing ? (
                   <Input
-                    value={formData.department || ''}
+                    value={typeof formData.department === 'object' && formData.department !== null ? (formData.department as any).name : (formData.department as string) || ''}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className="h-11"
                   />
                 ) : (
-                  <p className="text-base font-bold text-slate-900">{employee.department || 'N/A'}</p>
+                  <p className="text-base font-bold text-slate-900">{typeof employee.department === 'object' && employee.department !== null ? (employee.department as any).name : (employee.department as string) || 'N/A'}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Chức vụ</Label>
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Position</Label>
                 {isEditing ? (
                   <Input
                     value={formData.position || ''}
@@ -287,34 +287,34 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
                   />
                 ) : (
                   <p className="text-base font-bold text-slate-900">
-                    {employee.position === 'Manager' ? 'Quản lý' : employee.position || 'N/A'}
+                    {employee.position === 'Manager' ? 'Manager' : employee.position || 'N/A'}
                   </p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Mã nhân viên</Label>
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Employee ID</Label>
                 <p className="text-base font-bold text-slate-900 font-mono">{employee.id}</p>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Trạng thái</Label>
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Status</Label>
                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
                   employee.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                 }`}>
-                  {employee.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                  {employee.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Thông tin khác */}
+          {/* Other Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <MapPin className="w-5 h-5 text-purple-600" />
-              Thông tin khác
+              Other Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Địa chỉ</Label>
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-wider">Address</Label>
                 {isEditing ? (
                   <Input
                     value={formData.address || ''}
@@ -327,17 +327,17 @@ export function EmployeeDetail({ employeeId, onClose, onUpdate }: EmployeeDetail
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  Mã số thuế
+                  Tax Code
                   {!showSensitiveData && <Lock className="w-3 h-3 text-amber-500" />}
                 </Label>
                 {isEditing ? (
-                  <Input
-                    value={formData.taxCode || ''}
-                    onChange={(e) => setFormData({ ...formData, taxCode: e.target.value })}
-                    className="h-11"
-                  />
-                ) : (
-                  <p className="text-base font-bold text-slate-900">{maskData(employee.taxCode)}</p>
+                    <Input
+                      value={formData.taxCode || ''}
+                      onChange={(e) => setFormData({ ...formData, taxCode: e.target.value })}
+                      className="h-11"
+                    />
+                  ) : (
+                    <p className="text-base font-bold text-slate-900">{maskData(employee.taxCode ?? undefined)}</p>
                 )}
               </div>
             </div>

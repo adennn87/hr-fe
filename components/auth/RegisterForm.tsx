@@ -35,14 +35,14 @@ import { adjustmentService } from "@/services/adjustment.service";
 // --- 1. SCHEMA VALIDATION ---
 const registerSchema = z
   .object({
-    fullName: z.string().min(2, "Họ tên quá ngắn"),
+    fullName: z.string().min(2, "Full name is too short"),
     gender: z.enum([Gender.MALE, Gender.FEMALE, Gender.OTHER]),
-    department: z.string().min(1, "Vui lòng chọn phòng ban"),
+    department: z.string().min(1, "Please select department"),
     position: z.enum([Position.CEO, Position.Manager, Position.Employee]),
-    email: z.string().email("Email không hợp lệ"),
+    email: z.string().email("Invalid email address"),
     phoneNumber: z
       .string()
-      .regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "SĐT không hợp lệ"),
+      .regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "Invalid phone number"),
 
     // Logic check đủ 18 tuổi
     dateOfBirth: z.string().refine(
@@ -60,26 +60,26 @@ const registerSchema = z
         return age >= 18;
       },
       {
-        message: "Nhân viên phải đủ 18 tuổi",
+        message: "Employee must be at least 18 years old",
       }
     ),
 
     citizen_Id: z
       .string()
-      .length(12, "CCCD phải đúng 12 số")
-      .regex(/^\d+$/, "Chỉ nhập số"),
-    address: z.string().min(5, "Địa chỉ quá ngắn"),
+      .length(12, "ID card must be 12 digits")
+      .regex(/^\d+$/, "Numbers only"),
+    address: z.string().min(5, "Address is too short"),
     taxCode: z.string().optional(),
 
     password: z
       .string()
-      .min(8, "Tối thiểu 8 ký tự")
-      .regex(/[A-Z]/, "Cần 1 chữ in hoa")
-      .regex(/[!@#$%^&*(),.?":{}|<>]/, "Cần 1 ký tự đặc biệt"),
+      .min(8, "Minimum 8 characters")
+      .regex(/[A-Z]/, "Needs 1 uppercase letter")
+      .regex(/[!@#$%^&*(),.?":{}|<>]/, "Needs 1 special character"),
 
     confirmPassword: z.string(),
-    roleId: z.string().min(1, "Vui lòng chọn role"),
-    salaryPerDay: z.number().min(0, "Lương không hợp lệ"),
+    roleId: z.string().min(1, "Please select a role"),
+    salaryPerDay: z.number().min(0, "Invalid salary"),
 
     adjustments: z
   .array(
@@ -92,11 +92,11 @@ const registerSchema = z
   .optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Mật khẩu không khớp",
+    message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
-// Export type để có thể dùng lại ở nơi khác nếu cần
+// Export type for reuse elsewhere if needed
 export type RegisterFormValues = z.infer<typeof registerSchema>;
 
 interface RegisterFormProps {
@@ -150,7 +150,7 @@ const adjustments = watch("adjustments") || [];
         setDepartments(data);
       } catch (error) {
         console.error("Failed to fetch departments", error);
-        toast.error("Không thể tải danh sách phòng ban");
+        toast.error("Cannot load department list");
       } finally {
         setDepartmentsLoading(false);
       }
@@ -166,7 +166,7 @@ const adjustments = watch("adjustments") || [];
         setRoles(data);
       } catch (error) {
         console.error("Failed to fetch roles", error);
-        toast.error("Không thể tải danh sách role");
+        toast.error("Cannot load role list");
       } finally {
         setRolesLoading(false);
       }
@@ -197,31 +197,31 @@ const adjustments = watch("adjustments") || [];
   // Use the full enum for available positions
   const availablePositions = Object.values(Position);
 
-  // Tính ngày max cho input date (Hôm nay - 18 năm)
+  // Calculate max date for input (Today - 18 years)
   const maxDate = new Date();
   maxDate.setFullYear(maxDate.getFullYear() - 18);
   const maxDateString = maxDate.toISOString().split("T")[0];
 
   const requirements = [
-    { re: /.{8,}/, label: "8+ ký tự" },
-    { re: /[A-Z]/, label: "Chữ hoa" },
-    { re: /[!@#$%^&*(),.?":{}|<>]/, label: "Ký tự đặc biệt" },
+    { re: /.{8,}/, label: "8+ characters" },
+    { re: /[A-Z]/, label: "Uppercase letter" },
+    { re: /[!@#$%^&*(),.?":{}|<>]/, label: "Special character" },
   ];
 
-  // --- XỬ LÝ SUBMIT (ĐÃ SỬA ĐỂ GỌI API) ---
+  // --- SUBMIT HANDLER (MODIFIED TO CALL API) ---
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
-      // Gọi service đăng ký
+      // Call register service
       // Backend dùng khóa ngoại department => gửi thẳng departmentId
       const response = await authService.register(data as any);
 
       // Hiển thị message từ API response
-      toast.success(response.message || "Đăng ký tài khoản thành công", {
-        description: "Vui lòng đăng nhập để tiếp tục.",
+      toast.success(response.message || "Account registration successful", {
+        description: "Please login to continue.",
       });
 
-      // Chuyển sang trang đăng nhập sau 1.5 giây để user đọc được thông báo
+      // Switch to login page after 1.5 seconds so user can read message
       setTimeout(() => {
         onBack();
       }, 1500);
@@ -229,8 +229,8 @@ const adjustments = watch("adjustments") || [];
       recaptchaRef.current?.reset();
       console.error("Register error:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Vui lòng kiểm tra lại thông tin.";
-      toast.error("Đăng ký thất bại", {
+        error instanceof Error ? error.message : "Please check your information.";
+      toast.error("Registration failed", {
         description: errorMessage,
       });
     } finally {
@@ -347,7 +347,7 @@ const adjustments = watch("adjustments") || [];
             <Building2 className="w-4 h-4" /> Work Information
           </div>
           <p className="text-xs text-slate-500">
-            Chọn phòng ban trước, sau đó chọn chức vụ phù hợp.
+            Select a department first, then choose an appropriate position.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -362,7 +362,7 @@ const adjustments = watch("adjustments") || [];
                   }`}
               >
                 <option value="">
-                  {rolesLoading ? "Đang tải role..." : "Chọn role"}
+                  {rolesLoading ? "Loading roles..." : "Select role"}
                 </option>
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -386,7 +386,7 @@ const adjustments = watch("adjustments") || [];
                   }`}
               >
                 <option value="">
-                  {departmentsLoading ? "Đang tải phòng ban..." : "Chọn phòng ban"}
+                  {departmentsLoading ? "Loading departments..." : "Select department"}
                 </option>
                 {departments.map((dept) => (
                   <option key={dept.id} value={dept.id}>
@@ -413,9 +413,9 @@ const adjustments = watch("adjustments") || [];
                     }`}
                 >
                   {!selectedDepartmentId ? (
-                    <option value="">Chọn phòng ban trước</option>
+                    <option value="">Select department first</option>
                   ) : (
-                    <option value="">Chọn chức vụ...</option>
+                    <option value="">Select position...</option>
                   )}
 
                   {availablePositions.map((position) => (

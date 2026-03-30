@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { UserProfile } from '@/types/types';
 import { authService } from '@/services/auth.service';
 
-// Import component OTP xịn xò từ Shadcn
+// Import awesome OTP component from Shadcn
 import {
   InputOTP,
   InputOTPGroup,
@@ -27,7 +27,7 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
 
   const handleVerify = async () => {
     if (otp.length !== 6) {
-      toast.error("Vui lòng nhập đầy đủ 6 số OTP");
+      toast.error("Please enter complete 6-digit OTP");
       return;
     }
 
@@ -38,7 +38,7 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
       const pendingPassword = sessionStorage.getItem('pendingLoginPassword');
 
       if (!pendingEmail || !pendingPassword) {
-        toast.error("Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại.");
+        toast.error("Login information not found. Please login again.");
         onBack();
         return;
       }
@@ -75,15 +75,15 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
         sessionStorage.removeItem('pendingLoginEmail');
         sessionStorage.removeItem('pendingLoginPassword');
 
-        toast.success("Xác thực thành công!");
+        toast.success("Verification successful!");
         onLogin(userProfile);
       }
     } catch (error: any) {
       console.error('Error verifying OTP:', error);
-      toast.error("Mã xác thực không đúng", {
-        description: error.message || "Vui lòng thử lại"
+      toast.error("Invalid authentication code", {
+        description: error.message || "Please try again"
       });
-      setOtp(""); // Reset OTP để nhập lại
+      setOtp(""); // Reset OTP to re-enter
     } finally {
       setIsLoading(false);
     }
@@ -97,19 +97,19 @@ export function MfaForm({ email, onBack, onLogin }: MfaFormProps) {
       const pendingPassword = sessionStorage.getItem('pendingLoginPassword');
 
       if (!pendingEmail || !pendingPassword) {
-        toast.error("Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại.");
+        toast.error("Login information not found. Please login again.");
         onBack();
         return;
       }
 
       // Gửi lại OTP
       await authService.loginOtp(pendingEmail, pendingPassword);
-      toast.success("Mã OTP mới đã được gửi đến email của bạn");
+      toast.success("New OTP code has been sent to your email");
       setOtp(""); // Reset OTP
     } catch (error: any) {
       console.error('Error resending OTP:', error);
-      toast.error("Không thể gửi lại OTP", {
-        description: error.message || "Vui lòng thử lại sau"
+      toast.error("Cannot resend OTP", {
+        description: error.message || "Please try again later"
       });
     } finally {
       setIsResending(false);

@@ -73,7 +73,7 @@ export default function AssetManagementPage() {
   const canCreateAsset = isAdmin || hasPermission('ASSET_CREATE');
   const canAllocate = isAdmin || hasPermission('ASSET_ALLOCATE_CREATE');
 
-  // Redirect nếu không phải admin và không có ASSET_VIEW
+  // Redirect if not admin and lacks ASSET_VIEW permission
   useEffect(() => {
     if (!isAdmin && !hasPermission('ASSET_VIEW')) {
       router.replace('/dashboard');
@@ -96,7 +96,7 @@ export default function AssetManagementPage() {
       const data = await assetService.getAllocatedAssets(statusFilter);
       setAllocatedAssets(data);
     } catch (error: any) {
-      toast.error('Không thể tải danh sách cấp phát', {
+      toast.error('Cannot load allocation list', {
         description: error.message
       });
     } finally {
@@ -110,7 +110,7 @@ export default function AssetManagementPage() {
       const data = await assetService.getInventoryAssets();
       setInventoryAssets(data);
     } catch (error: any) {
-      toast.error('Không thể tải kho tài sản', {
+      toast.error('Cannot load asset inventory', {
         description: error.message
       });
     } finally {
@@ -129,10 +129,10 @@ export default function AssetManagementPage() {
 
       if (editingAsset) {
         await assetService.updateAsset(editingAsset.id, payload);
-        toast.success('Cập nhật tài sản thành công');
+        toast.success('Asset updated successfully');
       } else {
         await assetService.createAsset(payload);
-        toast.success('Tạo tài sản thành công');
+        toast.success('Asset created successfully');
       }
 
       setIsModalOpen(false);
@@ -151,7 +151,7 @@ export default function AssetManagementPage() {
       });
       activeTab === 'allocations' ? fetchAllocatedAssets() : fetchInventoryAssets();
     } catch (error: any) {
-      toast.error(editingAsset ? 'Lỗi khi cập nhật tài sản' : 'Lỗi khi tạo tài sản', {
+      toast.error(editingAsset ? 'Error updating asset' : 'Error creating asset', {
         description: error.message
       });
     } finally {
@@ -164,7 +164,7 @@ export default function AssetManagementPage() {
       const data = await employeeService.getAllEmployees();
       setEmployees(data);
     } catch (error: any) {
-      toast.error('Không thể tải danh sách nhân viên');
+      toast.error('Cannot load employee list');
     }
   };
 
@@ -173,7 +173,7 @@ export default function AssetManagementPage() {
     setAllocationForm({
       userId: '',
       allocatedDate: new Date().toISOString().split('T')[0],
-      note: `Bàn giao tài sản ${asset.name} cho nhân viên sử dụng`,
+      note: `Hand over asset ${asset.name} to employee for use`,
     });
     fetchEmployees();
     setIsAllocateModalOpen(true);
@@ -189,11 +189,11 @@ export default function AssetManagementPage() {
         ...allocationForm,
         assetId: selectedAssetToAllocate.id,
       });
-      toast.success('Cấp phát tài sản thành công');
+      toast.success('Asset allocated successfully');
       setIsAllocateModalOpen(false);
       fetchInventoryAssets();
     } catch (error: any) {
-      toast.error('Lỗi khi cấp phát tài sản', {
+      toast.error('Error allocating asset', {
         description: error.message
       });
     } finally {
@@ -202,15 +202,15 @@ export default function AssetManagementPage() {
   };
 
   const handleReturnAsset = async (allocationId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn thu hồi tài sản này không?')) return;
+    if (!window.confirm('Are you sure you want to return this asset?')) return;
 
     setIsLoading(true);
     try {
       await assetService.returnAsset(allocationId);
-      toast.success('Thu hồi tài sản thành công');
+      toast.success('Asset returned successfully');
       fetchAllocatedAssets();
     } catch (error: any) {
-      toast.error('Lỗi khi thu hồi tài sản', {
+      toast.error('Error returning asset', {
         description: error.message
       });
     } finally {
@@ -235,9 +235,9 @@ export default function AssetManagementPage() {
             <Laptop className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quản lý Tài sản</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Asset Management</h2>
             <p className="text-slate-500 font-medium text-sm flex items-center gap-1.5">
-              Hệ thống quản lý kho & cấp phát thiết bị
+              Inventory & equipment allocation management system
             </p>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function AssetManagementPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm tài sản, nhân viên..."
+              placeholder="Search assets, employees..."
               className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-64 transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -259,7 +259,7 @@ export default function AssetManagementPage() {
               className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
             >
               <Plus className="w-4 h-4" />
-              Thêm tài sản
+              Add Asset
             </button>
           )}
         </div>
@@ -271,13 +271,13 @@ export default function AssetManagementPage() {
           onClick={() => setActiveTab('allocations')}
           className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'allocations' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
-          Đang cấp phát
+          Allocated
         </button>
         <button
           onClick={() => setActiveTab('inventory')}
           className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'inventory' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
-          Kho tài sản
+          Asset Inventory
         </button>
       </div>
 
@@ -286,7 +286,7 @@ export default function AssetManagementPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-            <p className="text-slate-500 font-medium">Đang tải dữ liệu...</p>
+            <p className="text-slate-500 font-medium">Loading data...</p>
           </div>
         ) : activeTab === 'allocations' ? (
           <div className="grid gap-6">
@@ -295,19 +295,19 @@ export default function AssetManagementPage() {
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <ArrowRightLeft className="w-10 h-10 text-slate-300" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Chưa có dữ liệu cấp phát</h3>
-                <p className="text-slate-500 mt-2">Bắt đầu cấp phát tài sản cho nhân viên.</p>
+                <h3 className="text-xl font-bold text-slate-900">No allocation data</h3>
+                <p className="text-slate-500 mt-2">Start allocating assets to employees.</p>
               </div>
             ) : (
               <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Nhân viên</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Tài sản</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Ngày cấp</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Thao tác</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Employee</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Asset</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Allocation Date</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -342,7 +342,7 @@ export default function AssetManagementPage() {
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${item.status === 'allocated' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-50 text-slate-500 border border-slate-100'
                             }`}>
-                            {item.status === 'allocated' ? 'Đã cấp phát' : 'Đã thu hồi'}
+                            {item.status === 'allocated' ? 'Allocated' : 'Returned'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -353,7 +353,7 @@ export default function AssetManagementPage() {
                             {hasPermission('ASSET_ALLOCATE_UPDATE') && item.status === 'allocated' && (
                               <button
                                 onClick={() => handleReturnAsset(item.id)}
-                                title="Thu hồi tài sản"
+                                title="Return asset"
                                 className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-amber-600 transition-all"
                               >
                                 <ArrowRightLeft className="w-4 h-4" />
@@ -375,19 +375,19 @@ export default function AssetManagementPage() {
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Tag className="w-10 h-10 text-slate-300" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Kho tài sản trống</h3>
-                <p className="text-slate-500 mt-2">Chưa có tài sản nào trong kho.</p>
+                <h3 className="text-xl font-bold text-slate-900">Asset inventory is empty</h3>
+                <p className="text-slate-500 mt-2">No assets in inventory.</p>
               </div>
             ) : (
               <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Tài sản</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Thông tin</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Giá mua</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Thao tác</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Asset</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Info</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Purchase Price</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -420,7 +420,7 @@ export default function AssetManagementPage() {
                                 ? 'bg-green-50 text-green-600 border border-green-100'
                                 : 'bg-slate-50 text-slate-500 border border-slate-100'
                             }`}>
-                            {asset.status.toLowerCase() === 'available' ? 'Sẵn sàng' : asset.status.toLowerCase() === 'allocated' ? 'Đã cấp phát' : asset.status}
+                            {asset.status.toLowerCase() === 'available' ? 'Available' : asset.status.toLowerCase() === 'allocated' ? 'Allocated' : asset.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -428,7 +428,7 @@ export default function AssetManagementPage() {
                             {canAllocate && asset.status.toLowerCase() === 'available' && (
                               <button
                                 onClick={() => openAllocateModal(asset)}
-                                title="Cấp phát"
+                                title="Allocate"
                                 className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-green-600 transition-all"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
@@ -468,8 +468,8 @@ export default function AssetManagementPage() {
                   <Plus className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-900">{editingAsset ? 'Cập nhật tài sản' : 'Thêm tài sản mới'}</h3>
-                  <p className="text-slate-500 text-xs font-medium">{editingAsset ? 'Chỉnh sửa thông tin thiết bị' : 'Nhập thông tin chi tiết của thiết bị'}</p>
+                  <h3 className="text-xl font-black text-slate-900">{editingAsset ? 'Update Asset' : 'Add New Asset'}</h3>
+                  <p className="text-slate-500 text-xs font-medium">{editingAsset ? 'Edit equipment info' : 'Enter equipment details'}</p>
                 </div>
               </div>
               <button
@@ -498,18 +498,18 @@ export default function AssetManagementPage() {
             <form onSubmit={handleSubmitAsset} className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tên tài sản</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Asset Name</label>
                   <input
                     required
                     type="text"
-                    placeholder="VD: Laptop Dell Latitude 5440"
+                    placeholder="Ex: Dell Latitude 5440 Laptop"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
                     value={assetForm.name}
                     onChange={e => setAssetForm({ ...assetForm, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Loại tài sản</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
                   <select
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
                     value={assetForm.category}
@@ -517,40 +517,40 @@ export default function AssetManagementPage() {
                   >
                     <option value="Laptop">Laptop</option>
                     <option value="PC">PC</option>
-                    <option value="Monitor">Màn hình</option>
-                    <option value="Mouse">Chuột</option>
-                    <option value="Keyboard">Bàn phím</option>
-                    <option value="Other">Khác</option>
+                    <option value="Monitor">Monitor</option>
+                    <option value="Mouse">Mouse</option>
+                    <option value="Keyboard">Keyboard</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Số Serial</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Serial Number</label>
                   <input
                     required
                     type="text"
-                    placeholder="VD: DL5440SN001"
+                    placeholder="Ex: DL5440SN001"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
                     value={assetForm.serialNumber}
                     onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mã tài sản</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Asset Code</label>
                   <input
                     required
                     type="text"
-                    placeholder="VD: TS0001"
+                    placeholder="Ex: TS0001"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
                     value={assetForm.assetCode}
                     onChange={e => setAssetForm({ ...assetForm, assetCode: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Thương hiệu</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Brand</label>
                   <input
                     required
                     type="text"
-                    placeholder="VD: Dell"
+                    placeholder="Ex: Dell"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
                     value={assetForm.brand}
                     onChange={e => setAssetForm({ ...assetForm, brand: e.target.value })}
@@ -568,7 +568,7 @@ export default function AssetManagementPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ngày mua</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Purchase Date</label>
                   <input
                     type="date"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
@@ -577,7 +577,7 @@ export default function AssetManagementPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Giá mua (VNĐ)</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Purchase Price (VND)</label>
                   <input
                     type="number"
                     placeholder="VD: 25000000"
@@ -589,7 +589,7 @@ export default function AssetManagementPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ghi chú</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Notes</label>
                 <textarea
                   rows={3}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium resize-none"
@@ -604,7 +604,7 @@ export default function AssetManagementPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-50 transition-all"
                 >
-                  Hủy bỏ
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -612,7 +612,7 @@ export default function AssetManagementPage() {
                   className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
                 >
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {editingAsset ? 'Cập nhật' : 'Lưu tài sản'}
+                  {editingAsset ? 'Update' : 'Save Asset'}
                 </button>
               </div>
             </form>
@@ -629,7 +629,7 @@ export default function AssetManagementPage() {
                   <ArrowRightLeft className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-900">Cấp phát tài sản</h3>
+                  <h3 className="text-xl font-black text-slate-900">Allocate Asset</h3>
                   <p className="text-slate-500 text-xs font-medium">{selectedAssetToAllocate?.name}</p>
                 </div>
               </div>
@@ -640,14 +640,14 @@ export default function AssetManagementPage() {
 
             <form onSubmit={handleAllocateAsset} className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nhân viên nhận</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Receiving Employee</label>
                 <select
                   required
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
                   value={allocationForm.userId}
                   onChange={e => setAllocationForm({ ...allocationForm, userId: e.target.value })}
                 >
-                  <option value="">Chọn nhân viên...</option>
+                  <option value="">Select employee...</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.position || 'N/A'})</option>
                   ))}
@@ -655,7 +655,7 @@ export default function AssetManagementPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ngày cấp phát</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allocation Date</label>
                 <input
                   type="date"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
@@ -665,7 +665,7 @@ export default function AssetManagementPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ghi chú cấp phát</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allocation Notes</label>
                 <textarea
                   rows={3}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium resize-none"
@@ -680,7 +680,7 @@ export default function AssetManagementPage() {
                   onClick={() => setIsAllocateModalOpen(false)}
                   className="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-50 transition-all"
                 >
-                  Hủy bỏ
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -688,7 +688,7 @@ export default function AssetManagementPage() {
                   className="flex items-center gap-2 bg-green-600 text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-green-100 hover:bg-green-700 transition-all disabled:opacity-50"
                 >
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Cấp phát ngay
+                  Allocate Now
                 </button>
               </div>
             </form>

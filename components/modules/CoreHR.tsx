@@ -85,7 +85,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const [isUpdatingDept, setIsUpdatingDept] = useState(false);
   const { hasPermission, isAdmin } = usePermissions();
 
-  // State quản lý việc đóng/mở danh sách nhân sự trong phòng ban
+  // State to manage opening/closing the employee list in a department
   const [expandedDepts, setExpandedDepts] = useState<string[]>([]);
 
   // Kiểm tra quyền xem tổ chức (admin hoặc có USER_VIEW)
@@ -94,7 +94,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   // Kiểm tra quyền xem vai trò (admin hoặc có ROLE_VIEW)
   const canViewRole = isAdmin || hasPermission('ROLE_VIEW');
 
-  // Nếu user có quyền và không có defaultTab được chỉ định thì mặc định vào tab orgchart
+  // If user has permission and no defaultTab is specified, default to orgchart tab
   useEffect(() => {
     if (canViewOrg && !defaultTab) {
       setActiveTab('orgchart');
@@ -109,8 +109,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   }, [canViewOrg]);
 
   /**
-   * Gộp danh sách phòng ban đầy đủ (GET /departments) với nhóm nhân sự theo phòng ban,
-   * để phòng ban 0 người vẫn hiển thị trên sơ đồ tổ chức.
+   * Combine full department list (GET /departments) with employees grouped by department,
+   * so that empty departments still show on the org chart.
    */
   const mergeDepartmentsWithEmployees = async (
     grouped: Array<{ department: string; users: Employee[] }>
@@ -149,14 +149,14 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   };
 
   /**
-   * Load dữ liệu tổ chức.
-   * Ưu tiên endpoint group-by-department; nếu backend lỗi (500) thì fallback sang getAllEmployees và tự group theo department trên FE.
+   * Load org data.
+   * Prefer group-by-department endpoint; if backend error (500), fallback to getAllEmployees and group by department on FE.
    */
   const fetchEmployeesByDepartment = async () => {
     setIsLoadingEmployees(true);
     try {
       try {
-        // Thử gọi endpoint group-by-department (nếu backend OK sẽ dùng dữ liệu này)
+        // Try calling group-by-department endpoint (if backend is OK, use this data)
         const data = await employeeService.getEmployeesByDepartment();
         setDepartmentsData(await mergeDepartmentsWithEmployees(data));
         return;
@@ -164,7 +164,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         console.warn('group-by-department API failed, falling back to getAllEmployees():', err);
       }
 
-      // Fallback: dùng getAllEmployees rồi group theo department ở FE
+      // Fallback: use getAllEmployees and group by department on FE
       const allEmployees = await employeeService.getAllEmployees();
 
       const deptMap = new Map<string, Employee[]>();
@@ -173,7 +173,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         const deptName =
           emp.department && typeof emp.department === 'object'
             ? emp.department.name
-            : (emp.department || 'Khác');
+            : (emp.department || 'Other');
 
         if (!deptMap.has(deptName)) {
           deptMap.set(deptName, []);
@@ -189,8 +189,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       setDepartmentsData(await mergeDepartmentsWithEmployees(grouped));
     } catch (error: any) {
       console.error('Error building org chart data:', error);
-      toast.error('Không thể tải sơ đồ tổ chức', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Cannot load organization chart', {
+        description: error.message || 'Please try again later',
       });
       setDepartmentsData([]);
     } finally {
@@ -201,45 +201,45 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const handleViewEmployee = async (employeeId: string) => {
     setIsLoadingEmployeeDetail(true);
     try {
-      // Thử tìm employee từ dữ liệu đã có trước
+      // Try to find employee from existing data first
       let employee: Employee | undefined = undefined;
 
-      // Tìm trong departmentsData (org chart)
+      // Find in departmentsData (org chart)
       for (const group of departmentsData) {
         employee = group.users.find(u => u.id === employeeId);
         if (employee) break;
       }
 
-      // Nếu không tìm thấy, tìm trong allEmployees (profile tab)
+      // If not found, search in allEmployees (profile tab)
       if (!employee) {
         employee = allEmployees.find(u => u.id === employeeId);
       }
 
-      // Nếu vẫn không tìm thấy, thử gọi API
+      // If still not found, try calling API
       if (!employee) {
         try {
           employee = await employeeService.getEmployeeById(employeeId);
         } catch (apiError: any) {
-          // Nếu API fail, vẫn thử tìm lại trong dữ liệu đã có
+          // If API fails, still try to find in existing data
           console.warn('API call failed, using cached data:', apiError);
         }
       }
 
       if (employee) {
         setSelectedEmployee(employee);
-        // Chuyển sang tab Profile khi xem chi tiết
+        // Switch to Profile tab when viewing detail
         setActiveTab('profile');
-        // Fetch assets cho employee này ngay lập tức (không await để không block UI)
+        // Fetch assets for this employee immediately (without await to not block UI)
         fetchEmployeeAssets(employeeId).catch(err => {
           console.warn('Failed to fetch assets:', err);
         });
       } else {
-        throw new Error('Không tìm thấy thông tin nhân sự');
+        throw new Error('Cannot find employee information');
       }
     } catch (error: any) {
       console.error('Error fetching employee detail:', error);
-      toast.error('Không thể tải thông tin nhân sự', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Cannot load employee information', {
+        description: error.message || 'Please try again later',
       });
     } finally {
       setIsLoadingEmployeeDetail(false);
@@ -260,7 +260,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       console.log('Assets count:', assets?.length || 0);
       setAllocatedAssets(assets || []);
 
-      // Log để debug
+      // Log for debugging
       if (assets && assets.length > 0) {
         console.log('Assets data:', JSON.stringify(assets, null, 2));
       } else {
@@ -271,12 +271,12 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
 
-      // Nếu là lỗi quyền, vẫn set empty array nhưng log warning
+      // If permissions error, still set empty array but log warning
       if (error.message?.includes('quyền') || error.message?.includes('permission') || error.message?.includes('403')) {
         console.warn('⚠️ No permission to view assets, showing empty state');
         setAllocatedAssets([]);
       } else {
-        // Các lỗi khác vẫn set empty array
+        // Other errors still set empty array
         console.warn('⚠️ Error occurred, showing empty state');
         setAllocatedAssets([]);
       }
@@ -286,22 +286,22 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   };
 
   // Fetch assets khi chuyển sang tab assets
-  // Nếu có selectedEmployee thì fetch assets của employee đó
-  // Nếu chưa có selectedEmployee thì fetch assets của user đang đăng nhập
+  // If there is a selectedEmployee, fetch their assets
+  // If selectedEmployee is empty, fetch assets for logged-in user
   useEffect(() => {
     if (activeTab === 'assets') {
       if (selectedEmployee?.id) {
-        // Có employee được chọn, fetch assets của employee đó
+        // Employee is selected, fetch their assets
         fetchEmployeeAssets(selectedEmployee.id);
       } else if (user?.id) {
-        // Chưa chọn employee, fetch assets của user đang đăng nhập
+        // Employee not selected, fetch assets for logged-in user
         console.log('No employee selected, fetching assets for logged-in user:', user.id);
         fetchEmployeeAssets(user.id);
       }
     }
   }, [activeTab, selectedEmployee?.id, user?.id]);
 
-  // Build org chart từ API response
+  // Build org chart from API response
   const orgChart = useMemo(() => {
     const departments: Array<{
       id: string;
@@ -313,7 +313,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       parent?: string;
     }> = [];
 
-    // Tìm Ban Giám đốc (employees có position = CEO hoặc không có department)
+    // Find Board of Directors (employees with position = CEO or no department)
     let ceoEmployees: Employee[] = [];
     let ceoManager = 'CEO';
 
@@ -325,7 +325,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       }
     });
 
-    // Nếu không có CEO, tìm Manager đầu tiên
+    // If no CEO, find first Manager
     if (ceoEmployees.length === 0) {
       departmentsData.forEach(group => {
         const managers = group.users.filter(u => u.position === 'Manager');
@@ -335,11 +335,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       });
     }
 
-    // Tạo Ban Giám đốc
+    // Create Board of Directors
     if (ceoEmployees.length > 0 || departmentsData.length > 0) {
       departments.push({
         id: '1',
-        name: 'Ban Giám đốc',
+        name: 'Board of Directors',
         manager: ceoManager,
         employees: ceoEmployees.length,
         level: 0,
@@ -347,19 +347,19 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       });
     }
 
-    // Tạo các phòng ban từ API response
+    // Create departments from API response
     departmentsData.forEach((group, index) => {
       const deptName = group.department;
       const deptUsers = group.users;
 
-      // Tìm manager (ưu tiên Manager, sau đó CEO)
+      // Find manager (prefer Manager, then CEO)
       const manager = deptUsers.find(u => u.position === 'Manager')?.fullName ||
         deptUsers.find(u => u.position === 'CEO')?.fullName ||
-        'Chưa có';
+        'None';
 
       departments.push({
         id: String(index + 2),
-        name: `Phòng ${deptName}`,
+        name: `${deptName} Department`,
         parent: '1',
         manager: manager,
         employees: deptUsers.length,
@@ -371,26 +371,26 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     return departments;
   }, [departmentsData]);
 
-  // Flatten tất cả employees để dùng cho profile tab
+  // Flatten all employees for use in profile tab
   const employees = useMemo(() => {
     return departmentsData.flatMap(group => group.users);
   }, [departmentsData]);
 
   const tabs: { id: CoreHRTab; label: string; icon: typeof Building2 }[] = [
-    ...(canViewOrg ? [{ id: 'orgchart' as CoreHRTab, label: 'Tổ chức', icon: Building2 }] : []),
-    { id: 'profile', label: 'Hồ sơ', icon: User },
-    { id: 'assets', label: 'Tài sản', icon: Laptop },
+    ...(canViewOrg ? [{ id: 'orgchart' as CoreHRTab, label: 'Organization', icon: Building2 }] : []),
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'assets', label: 'Assets', icon: Laptop },
   ];
 
   const isSystemAdmin = user.role === 'System Admin';
 
-  // Fetch tất cả employees cho profile tab (nếu cần)
+  // Fetch all employees for profile tab (if needed)
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
 
   const fetchAllEmployees = async () => {
     try {
       const data = await employeeService.getAllEmployees();
-      // Flatten department và role objects
+      // Flatten department and role objects
       const flattened = data.map((emp: any) => ({
         ...emp,
         department:
@@ -405,8 +405,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       setAllEmployees(flattened);
     } catch (error: any) {
       console.error('Error fetching all employees:', error);
-      toast.error('Không thể tải danh sách nhân sự', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Cannot load employee list', {
+        description: error.message || 'Please try again later',
       });
     }
   };
@@ -417,11 +417,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     }
   }, [activeTab, isSystemAdmin]);
 
-  // Tự động load profile của user đang đăng nhập khi chưa chọn employee và ở tab profile
+  // Autoload profile of logged-in user when no employee is selected and on profile tab
   useEffect(() => {
     if (activeTab === 'profile' && !selectedEmployee && user?.id) {
       console.log('No employee selected, loading profile for logged-in user:', user.id);
-      // Gọi trực tiếp API để load profile, không dùng handleViewEmployee để tránh setActiveTab
+      // Call API directly to load profile, don't use handleViewEmployee to avoid setActiveTab
       const loadUserProfile = async () => {
         setIsLoadingEmployeeDetail(true);
         try {
@@ -433,12 +433,12 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
             if (employee) break;
           }
 
-          // Nếu không tìm thấy, tìm trong allEmployees (profile tab)
+          // If not found, search in allEmployees (profile tab)
           if (!employee) {
             employee = allEmployees.find(u => u.id === user.id);
           }
 
-          // Nếu vẫn không tìm thấy, thử gọi API
+          // If still not found, try calling API
           if (!employee) {
             try {
               employee = await employeeService.getEmployeeById(user.id);
@@ -470,7 +470,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     const employeeList = activeTab === 'profile' && isSystemAdmin ? allEmployees : employees;
     if (!keyword) return employeeList;
     return employeeList.filter((emp) => {
-      // Flatten department và role thành string để search
+      // Flatten department and role into string for search
       const deptStr = typeof emp.department === 'object' && emp.department !== null
         ? emp.department.name
         : emp.department || '';
@@ -483,7 +483,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         emp.fullName,
         deptStr,
         roleStr
-      ].filter(Boolean); // Loại bỏ null/undefined
+      ].filter(Boolean); // Remove null/undefined
 
       return searchValues.some((value) =>
         typeof value === 'string' && value.toLowerCase().includes(keyword)
@@ -500,7 +500,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
 
   const openEditModal = (emp: Employee) => {
     setEditingEmployeeId(emp.id);
-    // Flatten department và role thành string
+    // Flatten department and role into string
     const deptStr = typeof emp.department === 'object' && emp.department !== null
       ? emp.department.name
       : emp.department || '';
@@ -533,14 +533,14 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
 
   const handleDeleteEmployee = async (employeeId: string) => {
     if (!hasPermission('USER_DELETE')) {
-      toast.error('Bạn không có quyền xóa nhân sự');
+      toast.error('You do not have permission to delete employees');
       return;
     }
-    if (!confirm('Bạn có chắc chắn muốn xóa nhân sự này?')) return;
+    if (!confirm('Are you sure you want to delete this employee?')) return;
 
     try {
       await employeeService.deleteEmployee(employeeId);
-      toast.success('Xóa nhân sự thành công');
+      toast.success('Employee deleted successfully');
       // Refresh data
       await fetchEmployeesByDepartment();
       if (activeTab === 'profile' && isSystemAdmin) {
@@ -552,8 +552,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       }
     } catch (error: any) {
       console.error('Error deleting employee:', error);
-      toast.error('Không thể xóa nhân sự', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error('Cannot delete employee', {
+        description: error.message || 'Please try again later',
       });
     }
   };
@@ -562,17 +562,17 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     e.preventDefault();
     if (!editingDept) return;
     if (!hasPermission('DEPARTMENT_UPDATE')) {
-      toast.error('Bạn không có quyền cập nhật phòng ban');
+      toast.error('You do not have permission to update departments');
       return;
     }
     setIsUpdatingDept(true);
     try {
       await departmentService.updateDepartment(editingDept.id, editDeptForm);
-      toast.success('Cập nhật phòng ban thành công');
+      toast.success('Department updated successfully');
       setEditingDept(null);
       await fetchEmployeesByDepartment();
     } catch (error: any) {
-      toast.error(error.message || 'Lỗi khi cập nhật phòng ban');
+      toast.error(error.message || 'Error updating department');
     } finally {
       setIsUpdatingDept(false);
     }
@@ -581,20 +581,20 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
   const handleCreateDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasPermission('DEPARTMENT_CREATE')) {
-      toast.error('Bạn không có quyền tạo phòng ban');
+      toast.error('You do not have permission to create departments');
       return;
     }
 
     try {
       await departmentService.createDepartment(deptForm);
-      toast.success('Tạo phòng ban thành công');
+      toast.success('Department created successfully');
       setIsDeptModalOpen(false);
       setDeptForm({ code: '', name: '', description: '' });
       // Refresh data
       await fetchAllEmployees();
       await fetchEmployeesByDepartment();
     } catch (error: any) {
-      toast.error(error.message || 'Lỗi khi tạo phòng ban');
+      toast.error(error.message || 'Error creating department');
     }
   };
 
@@ -623,7 +623,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       if (employeeForm.password) payload.password = employeeForm.password;
 
       if (Object.keys(payload).length <= 1) {
-        toast.info('Không có thông tin nào thay đổi');
+        toast.info('No changes made');
         setIsModalOpen(false);
         return;
       }
@@ -649,10 +649,10 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
     try {
       if (editingEmployeeId) {
         await employeeService.updateEmployee(editingEmployeeId, payload);
-        toast.success('Cập nhật nhân sự thành công');
+        toast.success('Employee updated successfully');
       } else {
         await employeeService.createEmployee(payload);
-        toast.success('Tạo nhân sự mới thành công');
+        toast.success('Employee created successfully');
       }
       setIsModalOpen(false);
       // Refresh data
@@ -662,8 +662,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
       }
     } catch (error: any) {
       console.error('Error saving employee:', error);
-      toast.error(editingEmployeeId ? 'Không thể cập nhật nhân sự' : 'Không thể tạo nhân sự', {
-        description: error.message || 'Vui lòng thử lại sau',
+      toast.error(editingEmployeeId ? 'Cannot update employee' : 'Cannot create employee', {
+        description: error.message || 'Please try again later',
       });
     }
   };
@@ -682,7 +682,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8 animate-in fade-in duration-500">
-      {/* Header cải tiến */}
+      {/* Improved Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-purple-200">
@@ -692,7 +692,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Core HR</h2>
             <p className="text-slate-500 font-medium flex items-center gap-1.5 text-sm">
               <Fingerprint className="w-4 h-4 text-purple-500" />
-              Quản lý định danh & hồ sơ tập trung
+              Centralized identity & profile management
             </p>
           </div>
         </div>
@@ -719,47 +719,47 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         {activeTab === 'orgchart' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
-              <h3 className="text-lg font-bold text-slate-900">Sơ đồ tổ chức trực tuyến</h3>
+              <h3 className="text-lg font-bold text-slate-900">Online Organization Chart</h3>
               <div className="flex items-center gap-3">
                 {hasPermission('DEPARTMENT_CREATE') && (
                   <Button
                     onClick={() => setIsDeptModalOpen(true)}
                     className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Thêm phòng ban
+                    <Plus className="w-3.5 h-3.5" /> Add Department
                   </Button>
                 )}
-                <span className="px-3 py-1 bg-purple-50 text-purple-600 border border-purple-100 rounded-full text-[10px] font-black uppercase">Cập nhật thực tế</span>
+                <span className="px-3 py-1 bg-purple-50 text-purple-600 border border-purple-100 rounded-full text-[10px] font-black uppercase">Live Update</span>
               </div>
             </div>
 
             {isLoadingEmployees ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                <span className="ml-2 text-slate-500">Đang tải sơ đồ tổ chức...</span>
+                <span className="ml-2 text-slate-500">Loading organization chart...</span>
               </div>
             ) : orgChart.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-[20px] p-8 text-center">
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Building2 className="w-8 h-8 text-slate-400" />
                 </div>
-                <h4 className="text-lg font-bold text-slate-900 mb-2">Chưa có dữ liệu tổ chức</h4>
-                <p className="text-slate-500 text-sm">Sơ đồ tổ chức sẽ được hiển thị khi có dữ liệu nhân sự.</p>
+                <h4 className="text-lg font-bold text-slate-900 mb-2">No organization data</h4>
+                <p className="text-slate-500 text-sm">Organization chart will be displayed when employee data is available.</p>
               </div>
             ) : (
               <div className="grid gap-4">
                 {orgChart.map((dept) => {
                   const isExpanded = expandedDepts.includes(dept.id);
-                  // Lấy employees từ departmentsData
+                  // Get employees from departmentsData
                   let deptEmps: Employee[] = [];
                   if (dept.deptKey === 'CEO') {
-                    // Ban Giám đốc: lấy tất cả employees có position = CEO
+                    // Board of Directors: get all employees with position = CEO
                     departmentsData.forEach(group => {
                       const ceos = group.users.filter(u => u.position === 'CEO');
                       deptEmps = deptEmps.concat(ceos);
                     });
                   } else {
-                    // Các phòng ban khác: lấy từ departmentsData
+                    // Other departments: get from departmentsData
                     const group = departmentsData.find(g => g.department === dept.deptKey);
                     deptEmps = group ? group.users : [];
                   }
@@ -779,7 +779,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           <div>
                             <h4 className="font-bold text-slate-900">{dept.name}</h4>
                             <p className="text-xs text-slate-500 font-medium">
-                              Quản lý: <span className="text-slate-900">{dept.manager}</span> • {dept.employees} nhân sự
+                              Manager: <span className="text-slate-900">{dept.manager}</span> • {dept.employees} employees
                             </p>
                           </div>
                         </div>
@@ -794,7 +794,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                   setEditDeptForm({ code: fullDept.code, name: fullDept.name, description: fullDept.description || '' });
                                 }}
                                 className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                title="Chỉnh sửa phòng ban"
+                                title="Edit department"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -806,13 +806,13 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         </div>
                       </div>
 
-                      {/* Danh sách nhân sự chi tiết khi mở rộng */}
+                      {/* Detailed employee list when expanded */}
                       {isExpanded && (
                         <div className="ml-6 border-l-2 border-purple-100 pl-6 space-y-2 animate-in slide-in-from-top-2 duration-300">
                           {isLoadingEmployees ? (
                             <div className="p-4 flex items-center gap-2 text-slate-400">
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              <span className="text-xs">Đang tải...</span>
+                              <span className="text-xs">Loading...</span>
                             </div>
                           ) : deptEmps.length > 0 ? deptEmps.map(emp => (
                             <div
@@ -832,7 +832,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                 <div>
                                   <div className="text-sm font-bold text-slate-800 group-hover:text-purple-700">{emp.fullName || 'N/A'}</div>
                                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                                    {emp.position === 'Manager' ? 'QUẢN LÝ' : emp.position === 'CEO' ? 'CEO' : (emp.position || 'EMPLOYEE')}
+                                    {emp.position === 'Manager' ? 'MANAGER' : emp.position === 'CEO' ? 'CEO' : (emp.position || 'EMPLOYEE')}
                                   </div>
                                 </div>
                               </div>
@@ -849,7 +849,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                         openEditModal(emp);
                                       }}
                                       className="p-2 hover:bg-purple-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
-                                      title="Chỉnh sửa nhân sự"
+                                      title="Edit employee"
                                     >
                                       <Pencil className="w-4 h-4" />
                                     </button>
@@ -861,7 +861,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                         handleDeleteEmployee(emp.id);
                                       }}
                                       className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
-                                      title="Xóa nhân sự"
+                                      title="Delete employee"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
@@ -872,7 +872,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                       handleViewEmployee(emp.id);
                                     }}
                                     className="p-2 hover:bg-purple-50 text-slate-300 hover:text-purple-600 rounded-lg transition-colors"
-                                    title="Xem chi tiết"
+                                    title="View details"
                                   >
                                     <ChevronRight className="w-4 h-4" />
                                   </button>
@@ -880,7 +880,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                               </div>
                             </div>
                           )) : (
-                            <div className="p-4 text-xs text-slate-400 italic bg-slate-50/50 rounded-xl">Chưa có nhân sự trong phòng ban này</div>
+                            <div className="p-4 text-xs text-slate-400 italic bg-slate-50/50 rounded-xl">No employees in this department</div>
                           )}
                         </div>
                       )}
@@ -896,12 +896,12 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         {activeTab === 'profile' && (
           <div className="space-y-6">
             {selectedEmployee ? (
-              /* Hiển thị chi tiết nhân viên được chọn */
+              /* Display selected employee details */
               <div className="bg-white border border-slate-200 rounded-[32px] p-10 shadow-sm relative overflow-hidden">
                 {isLoadingEmployeeDetail ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                    <span className="ml-2 text-slate-500">Đang tải thông tin nhân sự...</span>
+                    <span className="ml-2 text-slate-500">Loading employee information...</span>
                   </div>
                 ) : (
                   <>
@@ -913,7 +913,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-purple-600 transition-all uppercase tracking-widest"
                       >
                         {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        {showSensitiveData ? 'Ẩn thông tin' : 'Xem thông tin PII'}
+                        {showSensitiveData ? 'Hide info' : 'View PII info'}
                       </button>
                     </div>
 
@@ -928,11 +928,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-2xl font-black text-slate-900 mb-2">
-                          {selectedEmployee.position === 'Manager' ? 'Quản lý' :
+                          {selectedEmployee.position === 'Manager' ? 'Manager' :
                             selectedEmployee.position === 'CEO' ? 'CEO' :
                               selectedEmployee.position ||
                               (typeof selectedEmployee.role === 'string' ? selectedEmployee.role : selectedEmployee.role?.name) ||
-                              'Nhân viên'}
+                              'Employee'}
                         </h3>
                         <p className="text-slate-500 text-sm">{selectedEmployee.fullName}</p>
                       </div>
@@ -940,15 +940,15 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         onClick={() => setSelectedEmployee(null)}
                         className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
                       >
-                        Quay lại
+                        Back
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {/* Cột 1: Thông tin cơ bản */}
+                      {/* Column 1: Basic Information */}
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Mã nhân viên</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Employee ID</div>
                           <p className="text-base font-bold text-slate-900">{selectedEmployee.id}</p>
                         </div>
                         <div className="space-y-2">
@@ -961,29 +961,29 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Giới tính</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Gender</div>
                           <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.gender === 'male' ? 'Nam' : selectedEmployee.gender === 'female' ? 'Nữ' : selectedEmployee.gender || 'N/A'}
+                            {selectedEmployee.gender === 'male' ? 'Male' : selectedEmployee.gender === 'female' ? 'Female' : selectedEmployee.gender || 'N/A'}
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Ngày sinh</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Date of Birth</div>
                           <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.dateOfBirth ? new Date(selectedEmployee.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
+                            {selectedEmployee.dateOfBirth ? new Date(selectedEmployee.dateOfBirth).toLocaleDateString('en-US') : 'N/A'}
                           </p>
                         </div>
                       </div>
 
-                      {/* Cột 2: Thông tin liên hệ */}
+                      {/* Column 2: Contact Information */}
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Email công việc</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Work Email</div>
                           <p className="text-base font-bold text-slate-900">{selectedEmployee.email || 'N/A'}</p>
                         </div>
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
                             <Lock className="w-3 h-3" />
-                            Số điện thoại
+                            Phone Number
                           </div>
                           <p className="text-base font-bold text-slate-900">
                             {showSensitiveData ? (selectedEmployee.phoneNumber || 'N/A') : maskData(selectedEmployee.phoneNumber || '')}
@@ -992,22 +992,22 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                         <div className="space-y-2">
                           <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
                             <Lock className="w-3 h-3" />
-                            Mã số thuế
+                            Tax Code
                           </div>
                           <p className="text-base font-bold text-slate-900">
                             {showSensitiveData ? (selectedEmployee.taxCode || 'N/A') : maskData(selectedEmployee.taxCode || '')}
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Địa chỉ</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Address</div>
                           <p className="text-base font-bold text-slate-900">{selectedEmployee.address || 'N/A'}</p>
                         </div>
                       </div>
 
-                      {/* Cột 3: Thông tin công việc */}
+                      {/* Column 3: Work Information */}
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Phòng ban</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Department</div>
                           <p className="text-base font-bold text-slate-900">
                             {selectedEmployee.department && typeof selectedEmployee.department === 'object'
                               ? selectedEmployee.department.name
@@ -1018,17 +1018,17 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Chức vụ</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Position</div>
                           <p className="text-base font-bold text-slate-900">
-                            {selectedEmployee.position === 'Manager' ? 'Quản lý' :
+                            {selectedEmployee.position === 'Manager' ? 'Manager' :
                               selectedEmployee.position === 'CEO' ? 'CEO' :
-                                selectedEmployee.position === 'Employee' ? 'Nhân viên' :
+                                selectedEmployee.position === 'Employee' ? 'Employee' :
                                   selectedEmployee.position || 'N/A'}
                           </p>
                         </div>
                         {canViewRole && (
                           <div className="space-y-2">
-                            <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Vai trò</div>
+                            <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Role</div>
                             <p className="text-base font-bold text-slate-900">
                               {selectedEmployee.role && typeof selectedEmployee.role === 'object'
                                 ? selectedEmployee.role.name
@@ -1040,7 +1040,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           </div>
                         )}
                         <div className="space-y-2">
-                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Trạng thái</div>
+                          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Status</div>
                           <p className="text-base font-bold text-slate-900">
                             <span className={`px-3 py-1 rounded-lg text-xs font-black ${selectedEmployee.status === 'Active' || selectedEmployee.isActive
                                 ? 'bg-emerald-50 text-emerald-600'
@@ -1064,7 +1064,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium"
-                      placeholder="Tìm mã nhân viên, tên, phòng ban..."
+                      placeholder="Search employee ID, name, department..."
                     />
                   </div>
                   {hasPermission('USER_CREATE') && (
@@ -1072,20 +1072,20 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                       onClick={openAddModal}
                       className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-slate-200 active:scale-95 transition-all"
                     >
-                      <Plus className="w-4 h-4" /> Thêm nhân sự mới
+                      <Plus className="w-4 h-4" /> Add New Employee
                     </button>
                   )}
                 </div>
-                {/* Table nhân sự giữ nguyên logic cũ nhưng làm đẹp CSS hơn */}
+                {/* Employee table with old logic but improved CSS */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.1em] border-b border-slate-100">
                       <tr>
-                        <th className="px-8 py-4">Nhân viên</th>
-                        <th className="px-8 py-4">Phòng ban</th>
-                        <th className="px-8 py-4">Chức vụ</th>
-                        {canViewRole && <th className="px-8 py-4">Vai trò</th>}
-                        <th className="px-8 py-4 text-right">Hành động</th>
+                        <th className="px-8 py-4">Employee</th>
+                        <th className="px-8 py-4">Department</th>
+                        <th className="px-8 py-4">Position</th>
+                        {canViewRole && <th className="px-8 py-4">Role</th>}
+                        <th className="px-8 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -1122,7 +1122,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                     openEditModal(emp);
                                   }}
                                   className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-blue-600"
-                                  title="Chỉnh sửa nhân sự"
+                                  title="Edit employee"
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </button>
@@ -1133,7 +1133,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                                   handleViewEmployee(emp.id);
                                 }}
                                 className="p-2 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl text-slate-400 hover:text-purple-600"
-                                title="Xem chi tiết"
+                                title="View details"
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </button>
@@ -1157,12 +1157,12 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 </div>
               </div>
             ) : (
-              /* Giao diện xem hồ sơ cá nhân cho Employee (Giữ nguyên logic của bạn) */
+              /* Profile view UI for Employee */
               <div className="bg-white border border-slate-200 rounded-[32px] p-10 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 flex items-center gap-4">
                   <button onClick={() => setShowSensitiveData(!showSensitiveData)} className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-purple-600 transition-all uppercase tracking-widest">
                     {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    {showSensitiveData ? 'Ẩn thông tin' : 'Xem thông tin PII'}
+                    {showSensitiveData ? 'Hide info' : 'View PII info'}
                   </button>
                 </div>
                 <div className="flex items-center gap-6 mb-12">
@@ -1178,12 +1178,12 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
                   {[
-                    { label: 'Mã nhân viên', value: 'EMP-2024-001', icon: Fingerprint },
-                    { label: 'Email công việc', value: user.email, icon: Mail },
-                    { label: 'Số điện thoại', value: '0912345678', sensitive: true },
-                    { label: 'CCCD/ID Number', value: '001234567890', sensitive: true },
-                    { label: 'Mã số thuế', value: '8765432109', sensitive: true },
-                    { label: 'Ngày gia nhập', value: '15/01/2020', icon: CheckCircle2 },
+                    { label: 'Employee ID', value: 'EMP-2024-001', icon: Fingerprint },
+                    { label: 'Work Email', value: user.email, icon: Mail },
+                    { label: 'Phone Number', value: '0912345678', sensitive: true },
+                    { label: 'ID Number', value: '001234567890', sensitive: true },
+                    { label: 'Tax Code', value: '8765432109', sensitive: true },
+                    { label: 'Join Date', value: '15/01/2020', icon: CheckCircle2 },
                   ].map((item, i) => (
                     <div key={i} className="space-y-1.5 group">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -1207,11 +1207,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
             <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-bold text-slate-900">
                 {selectedEmployee
-                  ? `Thiết bị được cấp phát - ${selectedEmployee.fullName}`
-                  : `Thiết bị được cấp phát - ${user.fullName || user.email}`}
+                  ? `Allocated Assets - ${selectedEmployee.fullName}`
+                  : `Allocated Assets - ${user.fullName || user.email}`}
               </h3>
               {!selectedEmployee && (
-                <p className="text-sm text-slate-500">Đang hiển thị tài sản của bạn</p>
+                <p className="text-sm text-slate-500">Showing your assets</p>
               )}
             </div>
 
@@ -1220,18 +1220,18 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 {isLoadingAssets ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                    <span className="ml-2 text-slate-500">Đang tải danh sách tài sản...</span>
+                    <span className="ml-2 text-slate-500">Loading assets...</span>
                   </div>
                 ) : allocatedAssets.length === 0 ? (
                   <div className="bg-white border border-slate-200 rounded-[24px] p-12 text-center">
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Laptop className="w-8 h-8 text-slate-400" />
                     </div>
-                    <h4 className="text-lg font-bold text-slate-900 mb-2">Chưa có tài sản được cấp phát</h4>
+                    <h4 className="text-lg font-bold text-slate-900 mb-2">No assets allocated</h4>
                     <p className="text-slate-500 text-sm">
                       {selectedEmployee
-                        ? 'Nhân viên này chưa được cấp phát thiết bị nào.'
-                        : 'Bạn chưa được cấp phát thiết bị nào.'}
+                        ? 'This employee has not been allocated any assets.'
+                        : 'You have not been allocated any assets.'}
                     </p>
                     <p className="text-xs text-slate-400 mt-2">
                       Debug: Employee ID = {selectedEmployee?.id || user?.id}, Assets count = {allocatedAssets.length}
@@ -1248,9 +1248,9 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           : 'bg-amber-50 text-amber-600';
 
                       const statusText = allocatedAsset.status === 'allocated'
-                        ? 'Đang sử dụng'
+                        ? 'In use'
                         : allocatedAsset.status === 'returned'
-                          ? 'Đã trả lại'
+                          ? 'Returned'
                           : allocatedAsset.status;
 
                       return (
@@ -1266,24 +1266,24 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                           <h4 className="font-black text-slate-900 text-lg mb-1">{asset.name}</h4>
                           <p className="text-xs font-mono text-slate-400 mb-2">SN: {asset.serialNumber}</p>
                           <p className="text-xs text-slate-500 mb-1">
-                            <span className="font-bold">Mã tài sản:</span> {asset.assetCode}
+                            <span className="font-bold">Asset Code:</span> {asset.assetCode}
                           </p>
                           <p className="text-xs text-slate-500 mb-1">
-                            <span className="font-bold">Hãng:</span> {asset.brand} - {asset.model}
+                            <span className="font-bold">Brand:</span> {asset.brand} - {asset.model}
                           </p>
                           <p className="text-xs text-slate-500 mb-6">
-                            <span className="font-bold">Loại:</span> {asset.category}
+                            <span className="font-bold">Category:</span> {asset.category}
                           </p>
                           <div className="space-y-2 border-t border-slate-50 pt-4">
                             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                              <span>Cấp ngày</span>
+                              <span>Allocated</span>
                               <span className="text-slate-900">
                                 {allocatedAsset.allocatedDate ? new Date(allocatedAsset.allocatedDate).toLocaleDateString('vi-VN') : 'N/A'}
                               </span>
                             </div>
                             {allocatedAsset.returnedDate && (
                               <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                                <span>Trả lại</span>
+                                <span>Returned</span>
                                 <span className="text-slate-900">
                                   {new Date(allocatedAsset.returnedDate).toLocaleDateString('vi-VN')}
                                 </span>
@@ -1306,8 +1306,8 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Laptop className="w-8 h-8 text-slate-400" />
                 </div>
-                <h4 className="text-lg font-bold text-slate-900 mb-2">Không thể tải tài sản</h4>
-                <p className="text-slate-500 text-sm">Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.</p>
+                <h4 className="text-lg font-bold text-slate-900 mb-2">Cannot load assets</h4>
+                <p className="text-slate-500 text-sm">Please login again or contact administrator.</p>
               </div>
             )}
           </div>
@@ -1318,27 +1318,27 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-xl font-black text-slate-900">{editingEmployeeId ? 'Sửa nhân sự' : 'Thêm nhân sự mới'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-sm font-bold text-slate-500 hover:text-slate-900">Đóng</button>
+              <h3 className="text-xl font-black text-slate-900">{editingEmployeeId ? 'Edit Employee' : 'Add New Employee'}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-sm font-bold text-slate-500 hover:text-slate-900">Close</button>
             </div>
             <form onSubmit={handleFormSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <FormField label="Mã nhân sự" value={employeeForm.id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, id: value }))} placeholder="EMP-2024-001" disabled={!!editingEmployeeId} />
-              <FormField label="Họ và tên" value={employeeForm.fullName} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, fullName: value }))} required />
+              <FormField label="Employee ID" value={employeeForm.id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, id: value }))} placeholder="EMP-2024-001" disabled={!!editingEmployeeId} />
+              <FormField label="Full Name" value={employeeForm.fullName} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, fullName: value }))} required />
               <FormField label="Email" type="email" value={employeeForm.email} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, email: value }))} required />
-              <FormField label="Mật khẩu" type="password" value={employeeForm.password} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, password: value }))} />
-              <FormField label="Số điện thoại" value={employeeForm.phoneNumber} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, phoneNumber: value }))} required />
-              <FormField label="Giới tính" value={employeeForm.gender} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, gender: value }))} placeholder="male/female/other" required />
-              <FormField label="Ngày sinh" type="date" value={employeeForm.dateOfBirth} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, dateOfBirth: value }))} required />
-              <FormField label="CCCD" value={employeeForm.citizen_Id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, citizen_Id: value }))} required />
-              <FormField label="Phòng ban" value={employeeForm.department} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, department: value }))} required />
-              <FormField label="Chức vụ" value={employeeForm.position} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, position: value }))} required />
+              <FormField label="Password" type="password" value={employeeForm.password} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, password: value }))} />
+              <FormField label="Phone Number" value={employeeForm.phoneNumber} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, phoneNumber: value }))} required />
+              <FormField label="Gender" value={employeeForm.gender} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, gender: value }))} placeholder="male/female/other" required />
+              <FormField label="Date of Birth" type="date" value={employeeForm.dateOfBirth} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, dateOfBirth: value }))} required />
+              <FormField label="ID Number" value={employeeForm.citizen_Id} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, citizen_Id: value }))} required />
+              <FormField label="Department" value={employeeForm.department} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, department: value }))} required />
+              <FormField label="Position" value={employeeForm.position} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, position: value }))} required />
               {canViewRole && (
-                <FormField label="Vai trò" value={employeeForm.role} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, role: value }))} required />
+                <FormField label="Role" value={employeeForm.role} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, role: value }))} required />
               )}
-              <FormField label="Địa chỉ" value={employeeForm.address} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, address: value }))} required />
-              <FormField label="Mã số thuế" value={employeeForm.taxCode} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, taxCode: value }))} required />
-              <FormField label="Trạng thái" value={employeeForm.status} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, status: value }))} required />
-              <FormField label="Lương theo ngày" type="number" value={employeeForm.salaryPerDay} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, salaryPerDay: value }))} />
+              <FormField label="Address" value={employeeForm.address} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, address: value }))} required />
+              <FormField label="Tax Code" value={employeeForm.taxCode} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, taxCode: value }))} required />
+              <FormField label="Status" value={employeeForm.status} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, status: value }))} required />
+              <FormField label="Salary per Day" type="number" value={employeeForm.salaryPerDay} onChange={(value) => setEmployeeForm((prev) => ({ ...prev, salaryPerDay: value }))} />
               <div className="flex items-center gap-2 mt-6">
                 <input
                   id="isActive"
@@ -1347,11 +1347,11 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                   onChange={(e) => setEmployeeForm((prev) => ({ ...prev, isActive: e.target.checked }))}
                   className="w-4 h-4"
                 />
-                <label htmlFor="isActive" className="text-sm font-semibold text-slate-700">Đang hoạt động</label>
+                <label htmlFor="isActive" className="text-sm font-semibold text-slate-700">Active</label>
               </div>
               <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold">Hủy</button>
-                <button type="submit" className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold">{editingEmployeeId ? 'Cập nhật' : 'Tạo mới'}</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold">Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold">{editingEmployeeId ? 'Update' : 'Create'}</button>
               </div>
             </form>
           </div>
@@ -1371,32 +1371,32 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-xl font-black text-slate-900">Cập nhật phòng ban</h3>
+              <h3 className="text-xl font-black text-slate-900">Update Department</h3>
               <button onClick={() => setEditingDept(null)} className="text-slate-400 hover:text-slate-900 transition-colors">
                 <Plus className="w-6 h-6 rotate-45" />
               </button>
             </div>
             <form onSubmit={handleUpdateDepartment} className="p-6 space-y-4">
               <FormField
-                label="Mã phòng ban"
+                label="Department Code"
                 value={editDeptForm.code}
                 onChange={(val) => setEditDeptForm(prev => ({ ...prev, code: val }))}
-                placeholder="Ví dụ: DEP001"
+                placeholder="e.g.: DEP001"
                 required
               />
               <FormField
-                label="Tên phòng ban"
+                label="Department Name"
                 value={editDeptForm.name}
                 onChange={(val) => setEditDeptForm(prev => ({ ...prev, name: val }))}
-                placeholder="Ví dụ: Phòng Kỹ Thuật"
+                placeholder="e.g.: Engineering"
                 required
               />
               <label className="flex flex-col gap-2">
-                <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả</span>
+                <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Description</span>
                 <textarea
                   value={editDeptForm.description}
                   onChange={(e) => setEditDeptForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Mô tả ngắn gọn về phòng ban..."
+                  placeholder="Brief description of the department..."
                   className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px] text-sm"
                 />
               </label>
@@ -1406,7 +1406,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                   onClick={() => setEditingDept(null)}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -1414,7 +1414,7 @@ export function CoreHR({ user, defaultTab }: CoreHRProps) {
                   className="px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 shadow-lg shadow-purple-100 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isUpdatingDept && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Cập nhật
+                  Update
                 </button>
               </div>
             </form>
@@ -1478,32 +1478,32 @@ function DeptModal({
     <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="text-xl font-black text-slate-900">Thêm phòng ban mới</h3>
+          <h3 className="text-xl font-black text-slate-900">Add New Department</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
             <Plus className="w-6 h-6 rotate-45" />
           </button>
         </div>
         <form onSubmit={onSubmit} className="p-6 space-y-4">
           <FormField
-            label="Mã phòng ban"
+            label="Department Code"
             value={form.code}
             onChange={(val) => setForm(prev => ({ ...prev, code: val }))}
-            placeholder="Ví dụ: IT, HR, MKT..."
+            placeholder="e.g.: IT, HR, MKT..."
             required
           />
           <FormField
-            label="Tên phòng ban"
+            label="Department Name"
             value={form.name}
             onChange={(val) => setForm(prev => ({ ...prev, name: val }))}
-            placeholder="Ví dụ: Công nghệ thông tin..."
+            placeholder="e.g.: Information Technology..."
             required
           />
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả</span>
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Description</span>
             <textarea
               value={form.description}
               onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Mô tả ngắn gọn về phòng ban..."
+              placeholder="Brief description of the department..."
               className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px] text-sm"
             />
           </label>
@@ -1513,13 +1513,13 @@ function DeptModal({
               onClick={onClose}
               className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
               className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-200"
             >
-              Tạo mới
+              Create
             </button>
           </div>
         </form>

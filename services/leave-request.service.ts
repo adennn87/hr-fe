@@ -12,7 +12,7 @@ export interface CreateLeaveRequestPayload {
 export interface LeaveRequest {
   id: string;
   user: any;
-  /** Có khi API trả userId phẳng thay vì object user */
+  /** Sometimes API returns flat userId instead of user object */
   userId?: string;
   startDate: string;
   endDate: string;
@@ -52,7 +52,7 @@ function normalizeLeaveType(t: unknown): LeaveType {
   return 'OTHER';
 }
 
-/** Chuẩn hóa một bản ghi đơn nghỉ từ nhiều dạng API. */
+/** Normalize a single leave request record from multiple API formats. */
 export function normalizeLeaveRequest(raw: unknown): LeaveRequest {
   if (!raw || typeof raw !== 'object') {
     return {
@@ -106,7 +106,7 @@ export function mapLeaveRequestList(raw: unknown): LeaveRequest[] {
   return unwrapLeaveList(raw).map((item) => normalizeLeaveRequest(item));
 }
 
-/** Tên hiển thị nhân viên (admin). */
+/** Employee display name (admin). */
 export function getLeaveRequestEmployeeLabel(req: LeaveRequest): string {
   const u = req.user;
   if (u && typeof u === 'object') {
@@ -118,10 +118,10 @@ export function getLeaveRequestEmployeeLabel(req: LeaveRequest): string {
     if (o.id) return String(o.id);
   }
   if (req.userId) return req.userId;
-  return 'Nhân viên';
+  return 'Employee';
 }
 
-/** userId để lọc đơn (ưu tiên field phẳng, sau đó nested user). */
+/** userId to filter requests (prioritize flat field, then nested user). */
 export function getLeaveRequestUserId(req: LeaveRequest): string | undefined {
   if (req.userId) return req.userId;
   const u = req.user;
@@ -137,12 +137,12 @@ function getAuthToken(): string | null {
   return sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
 }
 
-/** Đọc message lỗi từ JSON hoặc text (NestJS/class-validator thường trả message[]). */
+/** Read error message from JSON or text (NestJS/class-validator usually returns message[]). */
 function parseHttpErrorBody(status: number, text: string): string {
-  const fallback = `Lỗi ${status}${text ? `: ${text.slice(0, 280)}` : ''}`;
+  const fallback = `Error ${status}${text ? `: ${text.slice(0, 280)}` : ''}`;
   if (!text?.trim()) {
     return status === 500
-      ? 'Lỗi máy chủ (500). Kiểm tra định dạng dữ liệu gửi lên hoặc log backend.'
+      ? 'Server error (500). Check submitted data format or backend logs.'
       : fallback;
   }
   try {
@@ -158,7 +158,7 @@ function parseHttpErrorBody(status: number, text: string): string {
   return fallback;
 }
 
-/** Các biến thể body POST để tương thích NestJS/DTO (camelCase vs snake_case, tên field type). */
+/** POST body variants to be compatible with NestJS/DTO (camelCase vs snake_case, type field name). */
 function buildCreateLeaveBodyVariants(payload: CreateLeaveRequestPayload): Record<string, unknown>[] {
   const { startDate, endDate, type, reason } = payload;
 
@@ -183,7 +183,7 @@ export const leaveRequestService = {
     const url = `${baseUrl}/leave-requests`;
     const bodies = buildCreateLeaveBodyVariants(payload);
 
-    let lastMessage = 'Không thể tạo đơn xin nghỉ';
+    let lastMessage = 'Cannot create leave request';
 
     for (const body of bodies) {
       const response = await fetch(url, {
@@ -200,12 +200,12 @@ export const leaveRequestService = {
 
       if (response.ok) {
         if (!text?.trim()) {
-          throw new Error('Máy chủ không trả nội dung (200 rỗng)');
+          throw new Error('Server did not return content (empty 200)');
         }
         try {
           return normalizeLeaveRequest(JSON.parse(text));
         } catch {
-          throw new Error('Phản hồi máy chủ không phải JSON hợp lệ');
+          throw new Error('Server response is not valid JSON');
         }
       }
 

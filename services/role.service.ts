@@ -58,8 +58,8 @@ export interface RoleDetail {
 
 export const roleService = {
   /**
-   * Lấy danh sách role và user thuộc từng role
-   * API: GET /roles/listUserRole (không có /api prefix)
+   * Get list of roles and users belonging to each role
+   * API: GET /roles/listUserRole (without /api prefix)
    */
   async getRolesWithUsers(): Promise<RoleWithUsers[]> {
     const baseUrl = API_URL.replace('/api', '');
@@ -85,7 +85,7 @@ export const roleService = {
 
     const data = await response.json();
 
-    // Chuẩn hoá dữ liệu, flatten department.name thành string và map full_name -> fullName
+    // Normalize data, flatten department.name to string and map full_name -> fullName
     return (data as any[]).map((role) => ({
       id: role.id,
       name: role.name,
@@ -102,8 +102,8 @@ export const roleService = {
   },
 
   /**
-   * Lấy danh sách role (id + name) để dùng cho dropdown chọn role khi tạo tài khoản.
-   * Tận dụng endpoint /roles/listUserRole (đã có sẵn), chỉ lấy id + name.
+   * Get role list (id + name) to use for role selection dropdown when creating account.
+   * Leverage /roles/listUserRole endpoint (already available), only take id + name.
    */
   async getRoleOptions(): Promise<RoleOption[]> {
     const roles = await this.getRolesWithUsers();
@@ -111,7 +111,7 @@ export const roleService = {
   },
 
   /**
-   * Lấy danh sách functions (permissions)
+   * Get list of functions (permissions)
    * API: GET /roles/listFuncions
    */
   async getFunctions(): Promise<RoleFunction[]> {
@@ -139,7 +139,7 @@ export const roleService = {
   },
 
   /**
-   * Tạo role mới
+   * Create new role
    * API: POST /roles
    */
   async createRole(data: CreateRoleRequest): Promise<any> {
@@ -169,7 +169,7 @@ export const roleService = {
   },
 
   /**
-   * Lấy chi tiết role (bao gồm functions và users)
+   * Get role details (including functions and users)
    * API: GET /roles/:id
    */
   async getRoleDetail(id: string): Promise<RoleDetail> {
@@ -197,7 +197,7 @@ export const roleService = {
   },
 
   /**
-   * Cập nhật role
+   * Update role
    * API: PATCH /roles/:id
    */
   async updateRole(id: string, data: CreateRoleRequest): Promise<any> {

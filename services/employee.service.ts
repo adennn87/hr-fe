@@ -1,11 +1,11 @@
 import { API_URL } from '@/lib/api';
 
-// Định nghĩa types cho Employee - khớp với API response
+// Define types for Employee - match with API response
 export interface Employee {
   id: string;
   fullName: string;
   email: string;
-  password?: string; // Chỉ có trong response, không dùng để hiển thị
+  password?: string; // Only in response, not used for display
   isActive: boolean;
   phoneNumber?: string | null;
   gender?: string | null;
@@ -17,7 +17,7 @@ export interface Employee {
     name: string;
     description?: string;
   };
-  departmentCode?: string | null; // Flatten từ department object
+  departmentCode?: string | null; // Flatten from department object
   position?: string | null;
   address?: string | null;
   taxCode?: string | null;
@@ -42,7 +42,7 @@ export interface Department {
 
 export const employeeService = {
   /**
-   * Lấy danh sách employees theo department
+   * Get list of employees by department
    * API endpoint: GET /users/group-by-department
    */
   async getEmployeesByDepartment(): Promise<Array<{
@@ -77,25 +77,25 @@ export const employeeService = {
           errorMessage = errorData.message || errorData.error || errorMessage;
         }
       } catch {
-        // responseText không phải JSON, giữ nguyên errorMessage
+        // responseText is not JSON, keep errorMessage intact
       }
 
       console.error('❌ Error fetching employees by department:', {
         status: response.status,
         errorMessage,
-        rawResponse: responseText?.slice(0, 500), // giới hạn log
+        rawResponse: responseText?.slice(0, 500), // limit log
       });
 
       throw new Error(errorMessage);
     }
 
     const data = responseText ? JSON.parse(responseText) : [];
-    // Loại bỏ password từ response và flatten department object
+    // Remove password from response and flatten department object
     return data.map((group: any) => ({
       department: group.department,
       users: group.users.map((emp: any) => {
         const { password, full_name, ...employeeWithoutPassword } = emp;
-        // Map full_name (snake_case) -> fullName (camelCase) nếu backend trả về snake_case
+        // Map full_name (snake_case) -> fullName (camelCase) if backend returns snake_case
         return {
           ...employeeWithoutPassword,
           fullName: emp.fullName || emp.full_name || '',
@@ -117,8 +117,8 @@ export const employeeService = {
   },
 
   /**
-   * Lấy danh sách tất cả employees
-   * API endpoint: GET /users (không có /api prefix)
+   * Get list of all employees
+   * API endpoint: GET /users (without /api prefix)
    */
   async getAllEmployees(): Promise<Employee[]> {
     const baseUrl = API_URL.replace('/api', '');
@@ -143,7 +143,7 @@ export const employeeService = {
     }
 
     const data = await response.json();
-    // Loại bỏ password từ response và map full_name -> fullName
+    // Remove password from response and map full_name -> fullName
     return data.map((emp: any) => {
       const { password, full_name, ...employeeWithoutPassword } = emp;
       return {
@@ -154,9 +154,9 @@ export const employeeService = {
   },
 
   /**
-   * Lấy thông tin chi tiết một employee
-   * @param employeeId ID của employee
-   * API endpoint: GET /users/detail/{employeeId} (theo curl command user cung cấp)
+   * Get detailed information of an employee
+   * @param employeeId ID of employee
+   * API endpoint: GET /users/detail/{employeeId} (from curl command provided by user)
    */
   async getEmployeeById(employeeId: string): Promise<Employee> {
     const baseUrl = API_URL.replace('/api', '');
@@ -185,7 +185,7 @@ export const employeeService = {
     }
 
     const data = await response.json();
-    // Loại bỏ password và flatten department/role objects, map full_name -> fullName
+    // Remove password and flatten department/role objects, map full_name -> fullName
     const { password, full_name, ...employeeWithoutPassword } = data;
     return {
       ...employeeWithoutPassword,
@@ -206,8 +206,8 @@ export const employeeService = {
   },
 
   /**
-   * Tạo employee mới
-   * @param data Dữ liệu employee
+   * Create new employee
+   * @param data Employee data
    */
   async createEmployee(data: Partial<Employee>): Promise<Employee> {
     const baseUrl = API_URL.replace('/api', '');
@@ -236,9 +236,9 @@ export const employeeService = {
   },
 
   /**
-   * Cập nhật employee
-   * @param employeeId ID của employee
-   * @param data Dữ liệu cập nhật
+   * Update employee
+   * @param employeeId ID of employee
+   * @param data Data to update
    */
   async updateEmployee(employeeId: string, data: Partial<Employee>): Promise<Employee> {
     const baseUrl = API_URL.replace('/api', '');
@@ -267,8 +267,8 @@ export const employeeService = {
   },
 
   /**
-   * Xóa employee
-   * @param employeeId ID của employee
+   * Delete employee
+   * @param employeeId ID of employee
    */
   async deleteEmployee(employeeId: string): Promise<void> {
     const baseUrl = API_URL.replace('/api', '');

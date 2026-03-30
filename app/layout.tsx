@@ -4,7 +4,7 @@ import '../styles/index.css';
 
 export const metadata: Metadata = {
     title: 'HR System',
-    description: 'Hệ thống quản lý nhân sự theo App Router',
+    description: 'HR Management System with App Router',
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         {children}
         <Toaster />

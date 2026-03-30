@@ -13,6 +13,7 @@ const fallbackUser: User = {
   location: 'Da Nang',
   avatar: '',
   mfaEnabled: true,
+  permissions: [],
 };
 
 function readUserFromStorage(): User {
@@ -27,7 +28,7 @@ function readUserFromStorage(): User {
 }
 
 export default function AttendancePage() {
-  /** Một lần mount + reference ổn định — tránh JSON.parse mỗi render làm con re-mount (popover/modal tự đóng). */
+  /** Constant mount + stable reference — prevents JSON.parse on every render that causes children to remount (popovers/modals closing automatically). */
   const [user, setUser] = useState<User>(fallbackUser);
 
   useEffect(() => {

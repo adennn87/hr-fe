@@ -16,13 +16,13 @@ export default function IAMPage() {
       router.replace('/login');
       return;
     }
-    // Redirect nếu không có quyền ROLE_VIEW và không phải admin
+    // Redirect if no ROLE_VIEW permission and not admin
     if (user && !isAdmin && !hasPermission('ROLE_VIEW')) {
       router.replace('/dashboard');
     }
   }, [user, router, isAdmin, hasPermission]);
 
-  // Nếu đang loading user hoặc là khách, trả về loading hoặc null
+  // If loading user or guest, return loading or null
   if (!user || user === GUEST_USER) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -31,7 +31,7 @@ export default function IAMPage() {
     );
   }
 
-  // Chặn render nếu không có quyền
+  // Block render if no permission
   if (!isAdmin && !hasPermission('ROLE_VIEW')) {
     return (
       <div className="flex h-64 items-center justify-center">

@@ -6,7 +6,7 @@ export function isUuidLike(s: string | undefined | null): boolean {
 }
 
 /**
- * Tên hiển thị cho nhân viên (tránh dùng UUID / id làm dòng chính trong dropdown).
+ * Display name for employee (avoid using UUID / id as primary line in dropdown).
  */
 export function getEmployeeDisplayLabel(emp: any): string {
   const raw =
@@ -29,13 +29,13 @@ export function getEmployeeDisplayLabel(emp: any): string {
 
   const id = emp?.id != null ? String(emp.id) : '';
   if (id) {
-    if (isUuidLike(id)) return `Nhân viên ${id.slice(0, 8)}…`;
+    if (isUuidLike(id)) return `Employee ${id.slice(0, 8)}…`;
     return id;
   }
-  return 'Nhân viên';
+  return 'Employee';
 }
 
-/** Chuỗi phụ (email) khi đã có tên rõ ràng — không lặp UUID. */
+/** Secondary string (email) when name is clearly defined — avoid duplicate UUID. */
 export function getEmployeeSecondaryLine(emp: any): string | null {
   const email = emp?.email != null ? String(emp.email).trim() : '';
   if (email && email.includes('@')) return email;

@@ -43,12 +43,12 @@ import { toast } from 'sonner';
 import { Gender } from '@/types/types';
 
 const profileSchema = z.object({
-  fullName: z.string().min(2, "Họ tên quá ngắn"),
-  phoneNumber: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "SĐT không hợp lệ").optional().or(z.literal("")),
+  fullName: z.string().min(2, "Name too short"),
+  phoneNumber: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g, "Invalid phone number").optional().or(z.literal("")),
   gender: z.string().optional(),
   dateOfBirth: z.string().optional(),
   address: z.string().optional(),
-  citizen_Id: z.string().length(12, "CCCD phải đúng 12 số").optional().or(z.literal("")),
+  citizen_Id: z.string().length(12, "ID must be exactly 12 digits").optional().or(z.literal("")),
   taxCode: z.string().optional(),
 });
 
@@ -113,11 +113,11 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
         sessionStorage.setItem('user', JSON.stringify(newUser));
       }
 
-      toast.success("Cập nhật hồ sơ thành công!");
+      toast.success("Profile updated successfully!");
       setIsEditing(false);
       if (onUpdate) onUpdate();
     } catch (error: any) {
-      toast.error("Cập nhật thất bại", {
+      toast.error("Update failed", {
         description: error.message
       });
     } finally {
@@ -189,7 +189,7 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
                        <input
                         {...register("fullName")}
                         className="text-3xl font-black tracking-tight bg-white/10 border-b border-white/30 outline-none w-full px-2 rounded"
-                        placeholder="Họ và tên"
+                        placeholder="Full Name"
                       />
                       {errors.fullName && <p className="text-xs text-red-400 mt-1 font-bold">{errors.fullName.message}</p>}
                     </div>
@@ -211,7 +211,7 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
                   type="button"
                   onClick={() => setIsEditing(true)}
                   className="absolute top-0 right-0 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-                  title="Chỉnh sửa hồ sơ"
+                  title="Edit Profile"
                 >
                   <Edit3 className="w-5 h-5" />
                 </button>
@@ -225,10 +225,10 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
               <div className="px-10 -translate-y-6">
                 <TabsList className="grid w-full grid-cols-2 p-1.5 bg-white shadow-xl rounded-2xl border border-slate-100 h-14">
                   <TabsTrigger value="personal" className="rounded-xl flex items-center gap-2.5 data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 font-black text-xs uppercase tracking-widest">
-                    <User className="w-4 h-4" /> Cá nhân
+                    <User className="w-4 h-4" /> Personal
                   </TabsTrigger>
                   <TabsTrigger value="work" className="rounded-xl flex items-center gap-2.5 data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 font-black text-xs uppercase tracking-widest">
-                    <Building2 className="w-4 h-4" /> Công việc
+                    <Building2 className="w-4 h-4" /> Work
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -237,22 +237,22 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
                 <TabsContent value="personal" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <InfoItem icon={Mail} label="Email" value={profile.email} />
-                    <InfoItem icon={Phone} label="Số điện thoại" value={profile.phoneNumber} editableField="phoneNumber" />
-                    <InfoItem icon={Calendar} label="Ngày sinh" value={profile.dateOfBirth} editableField="dateOfBirth" />
-                    <InfoItem icon={UserCheck} label="Giới tính" value={profile.gender} editableField="gender" />
-                    <InfoItem icon={Hash} label="Số CCCD" value={profile.citizen_Id} editableField="citizen_Id" />
-                    <InfoItem icon={MapPin} label="Địa chỉ" value={profile.address} editableField="address" className="sm:col-span-2" />
+                    <InfoItem icon={Phone} label="Phone Number" value={profile.phoneNumber} editableField="phoneNumber" />
+                    <InfoItem icon={Calendar} label="Date of Birth" value={profile.dateOfBirth} editableField="dateOfBirth" />
+                    <InfoItem icon={UserCheck} label="Gender" value={profile.gender} editableField="gender" />
+                    <InfoItem icon={Hash} label="ID Number" value={profile.citizen_Id} editableField="citizen_Id" />
+                    <InfoItem icon={MapPin} label="Address" value={profile.address} editableField="address" className="sm:col-span-2" />
                   </div>
                 </TabsContent>
 
                 <TabsContent value="work" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <InfoItem icon={Building2} label="Phòng ban" value={profile.department?.name || profile.department} />
-                    <InfoItem icon={Briefcase} label="Chức vụ" value={profile.position} />
-                    <InfoItem icon={BadgeDollarSign} label="Lương / Ngày" value={profile.salaryPerDay ? `${Number(profile.salaryPerDay).toLocaleString()} VNĐ` : "---"} />
-                    <InfoItem icon={Shield} label="Quyền hạn" value={profile.role?.name || profile.role} />
-                    <InfoItem icon={Activity} label="Trạng thái" value={profile.status || (profile.isActive ? "Working" : "Resigned")} />
-                    <InfoItem icon={CreditCard} label="Mã số thuế" value={profile.taxCode} editableField="taxCode" />
+                    <InfoItem icon={Building2} label="Department" value={profile.department?.name || profile.department} />
+                    <InfoItem icon={Briefcase} label="Position" value={profile.position} />
+                    <InfoItem icon={BadgeDollarSign} label="Salary / Day" value={profile.salaryPerDay ? `${Number(profile.salaryPerDay).toLocaleString()} VND` : "---"} />
+                    <InfoItem icon={Shield} label="Role" value={profile.role?.name || profile.role} />
+                    <InfoItem icon={Activity} label="Status" value={profile.status || (profile.isActive ? "Working" : "Resigned")} />
+                    <InfoItem icon={CreditCard} label="Tax Code" value={profile.taxCode} editableField="taxCode" />
                   </div>
                 </TabsContent>
               </div>
@@ -262,7 +262,7 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
           {/* Footer Actions */}
           <div className="bg-slate-50/80 p-6 px-10 border-t border-slate-100 flex justify-between items-center backdrop-blur-sm">
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-              Lần cuối cập nhật: {new Date().toLocaleDateString('vi-VN')}
+              Last updated: {new Date().toLocaleDateString('en-US')}
             </p>
             
             <div className="flex gap-3">
@@ -273,7 +273,7 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
                     onClick={() => { setIsEditing(false); reset(); }}
                     className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-100 transition-all shadow-sm active:scale-95"
                   >
-                    HỦY
+                    CANCEL
                   </button>
                   <button 
                     type="submit"
@@ -281,7 +281,7 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
                     className="flex items-center gap-2 px-8 py-2.5 bg-blue-600 rounded-xl text-xs font-black text-white hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                   >
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    LƯU THAY ĐỔI
+                    SAVE CHANGES
                   </button>
                 </>
               ) : (
@@ -290,7 +290,7 @@ export function ProfileModal({ isOpen, onClose, profile, onUpdate }: ProfileModa
                   onClick={onClose}
                   className="group relative px-8 py-2.5 bg-slate-900 overflow-hidden rounded-xl text-xs font-black text-white hover:bg-slate-800 transition-all shadow-lg active:scale-95"
                 >
-                  <span className="relative z-10">ĐÓNG</span>
+                  <span className="relative z-10">CLOSE</span>
                   <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                 </button>
               )}

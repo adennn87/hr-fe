@@ -19,8 +19,8 @@ export type SelectedAdjustment = {
 
 export type AdjustmentSelectorProps = {
   adjustmentTypes: AdjustmentType[];
-  value: SelectedAdjustment[]; // source of truth từ parent
-  onChange: (data: SelectedAdjustment[]) => void; // trả về array full SelectedAdjustment
+  value: SelectedAdjustment[]; // source of truth from parent
+  onChange: (data: SelectedAdjustment[]) => void; // returns full array of SelectedAdjustment
 };
 
 export default function AdjustmentSelector({
@@ -39,18 +39,18 @@ export default function AdjustmentSelector({
     [search, adjustmentTypes]
   );
 
-  // Thêm adjustment
+  // Add adjustment
   const addAdjustment = (adj: AdjustmentType) => {
     if (value.some((a) => a.typeId === adj.id)) return;
     onChange([...value, { typeId: adj.id, amount: 0, note: "", name: adj.name, type: adj.type }]);
   };
 
-  // Xoá adjustment
+  // Remove adjustment
   const removeAdjustment = (typeId: string) => {
     onChange(value.filter((a) => a.typeId !== typeId));
   };
 
-  // Cập nhật amount hoặc note
+  // Update amount or note
   const updateAdjustment = (typeId: string, key: "amount" | "note", val: any) => {
     onChange(
       value.map((a) => (a.typeId === typeId ? { ...a, [key]: val } : a))

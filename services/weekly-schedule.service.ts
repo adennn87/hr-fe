@@ -31,7 +31,7 @@ export interface WeeklySchedule {
   updatedAt?: string;
 }
 
-// Lấy token từ storage
+// Get token from storage
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
@@ -39,15 +39,15 @@ function getAuthToken(): string | null {
 
 export const weeklyScheduleService = {
   /**
-   * Tạo lịch làm việc tuần mới
-   * API endpoint: POST /weekly-schedules (không có /api prefix)
+   * Create new weekly schedule
+   * API endpoint: POST /weekly-schedules (without /api prefix)
    */
   async createWeeklySchedule(data: CreateWeeklyScheduleRequest): Promise<WeeklySchedule> {
     try {
       const baseUrl = API_URL.replace('/api', '');
       const token = getAuthToken();
       
-      // Log request data để debug
+      // Log request data for debugging
       console.log('Creating weekly schedule with data:', JSON.stringify(data, null, 2));
       
       const response = await fetch(`${baseUrl}/weekly-schedules`, {
@@ -61,9 +61,9 @@ export const weeklyScheduleService = {
       });
 
       if (!response.ok) {
-        // Xử lý lỗi 401/403 - token hết hạn hoặc không hợp lệ
+        // Handle 401/403 errors - expired or invalid token
         if (response.status === 401 || response.status === 403) {
-          // Xóa token và redirect về login
+          // Clear token and redirect to login
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem('accessToken');
             localStorage.removeItem('accessToken');
@@ -72,27 +72,27 @@ export const weeklyScheduleService = {
             document.cookie = 'access_token=; path=/; max-age=0';
             window.location.href = '/login';
           }
-          throw new Error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
+          throw new Error('Session expired. Please log in again.');
         }
         
-        // Đọc response text trước (vì có thể không phải JSON hoặc empty)
+        // Read response text first (might not be JSON or empty)
         const responseText = await response.text().catch(() => '');
         let errorMessage = `Error ${response.status}: ${response.statusText || 'Internal Server Error'}`;
         let errorData: any = {};
         
-        // Thử parse JSON nếu có
+        // Try to parse JSON if available
         if (responseText && responseText.trim()) {
           try {
             errorData = JSON.parse(responseText);
             errorMessage = errorData.message || errorData.error || errorData.errorMessage || errorMessage;
           } catch (e) {
-            // Nếu không parse được JSON, dùng text làm error message
+            // If JSON cannot be parsed, use text as error message
             console.warn('Failed to parse error response as JSON:', e);
             errorMessage = responseText.trim() || errorMessage;
           }
         }
         
-        // Log chi tiết để debug - log từng field riêng để dễ đọc
+        // Log details for debugging - log each field separately for readability
         console.error('=== API Error Details ===');
         console.error('Status:', response.status);
         console.error('Status Text:', response.statusText);
@@ -104,12 +104,12 @@ export const weeklyScheduleService = {
         console.error('Error Data:', Object.keys(errorData).length > 0 ? errorData : '(empty or invalid JSON)');
         console.error('========================');
         
-        // Nếu là lỗi 500 và không có error message chi tiết, thêm gợi ý
+        // If 500 error and no detailed error message, add suggestion
         if (response.status === 500) {
           if (!errorData.message && !errorData.error && !responseText?.trim()) {
-            errorMessage = 'Lỗi server. Vui lòng kiểm tra lại dữ liệu và thử lại.';
+            errorMessage = 'Server error. Please check the data and try again.';
           } else if (!errorData.message && !errorData.error && responseText?.trim()) {
-            errorMessage = `Lỗi server: ${responseText.trim()}`;
+            errorMessage = `Server error: ${responseText.trim()}`;
           }
         }
         
@@ -119,17 +119,17 @@ export const weeklyScheduleService = {
       return await response.json();
     } catch (error: any) {
       console.error('Error creating weekly schedule:', error);
-      // Nếu đã là lỗi về token, không wrap lại
-      if (error.message && error.message.includes('Phiên làm việc hết hạn')) {
+      // If it is already a token error, do not wrap it
+      if (error.message && error.message.includes('Session expired')) {
         throw error;
       }
-      throw new Error(error.message || 'Không thể tạo lịch làm việc');
+      throw new Error(error.message || 'Cannot create weekly schedule');
     }
   },
 
   /**
-   * Lấy danh sách lịch làm việc
-   * API endpoint: GET /weekly-schedules (không có /api prefix)
+   * Get list of weekly schedules
+   * API endpoint: GET /weekly-schedules (without /api prefix)
    */
   async getWeeklySchedules(userId?: string): Promise<WeeklySchedule[]> {
     try {
@@ -146,9 +146,9 @@ export const weeklyScheduleService = {
       });
 
       if (!response.ok) {
-        // Xử lý lỗi 401/403 - token hết hạn hoặc không hợp lệ
+        // Handle 401/403 errors - expired or invalid token
         if (response.status === 401 || response.status === 403) {
-          // Xóa token và redirect về login
+          // Clear token and redirect to login
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem('accessToken');
             localStorage.removeItem('accessToken');
@@ -157,16 +157,16 @@ export const weeklyScheduleService = {
             document.cookie = 'access_token=; path=/; max-age=0';
             window.location.href = '/login';
           }
-          throw new Error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
+          throw new Error('Session expired. Please log in again.');
         }
         
-        // Lấy error message từ response
+        // Get error message from response
         let errorMessage = `Error ${response.status}`;
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorData.errorMessage || errorMessage;
           
-          // Log chi tiết để debug
+          // Log details for debugging
           console.error('API Error Details:', {
             status: response.status,
             statusText: response.statusText,
@@ -174,7 +174,7 @@ export const weeklyScheduleService = {
             endpoint
           });
         } catch (e) {
-          // Nếu không parse được JSON, lấy text
+          // If JSON cannot be parsed, get text
           const text = await response.text().catch(() => '');
           errorMessage = text || errorMessage;
           console.error('API Error (non-JSON):', {
@@ -191,17 +191,17 @@ export const weeklyScheduleService = {
       return await response.json();
     } catch (error: any) {
       console.error('Error fetching weekly schedules:', error);
-      // Nếu đã là lỗi về token, không wrap lại
-      if (error.message && error.message.includes('Phiên làm việc hết hạn')) {
+      // If it is already a token error, do not wrap it
+      if (error.message && error.message.includes('Session expired')) {
         throw error;
       }
-      throw new Error(error.message || 'Không thể tải lịch làm việc');
+      throw new Error(error.message || 'Cannot load weekly schedules');
     }
   },
 
   /**
-   * Lấy danh sách lịch làm việc của tôi
-   * API endpoint: GET /weekly-schedules/me (không có /api prefix)
+   * Get my weekly schedules
+   * API endpoint: GET /weekly-schedules/me (without /api prefix)
    */
   async getMyWeeklySchedule(): Promise<WeeklySchedule[]> {
     try {
@@ -226,7 +226,7 @@ export const weeklyScheduleService = {
             document.cookie = 'access_token=; path=/; max-age=0';
             window.location.href = '/login';
           }
-          throw new Error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
+          throw new Error('Session expired. Please log in again.');
         }
         
         let errorMessage = `Error ${response.status}`;
@@ -244,15 +244,15 @@ export const weeklyScheduleService = {
       return await response.json();
     } catch (error: any) {
       console.error('Error fetching my weekly schedule:', error);
-      if (error.message && error.message.includes('Phiên làm việc hết hạn')) {
+      if (error.message && error.message.includes('Session expired')) {
         throw error;
       }
-      throw new Error(error.message || 'Không thể tải lịch làm việc của tôi');
+      throw new Error(error.message || 'Cannot load my weekly schedules');
     }
   },
 
   /**
-   * Cập nhật các ngày trong lịch tuần
+   * Update days in weekly schedule
    * API endpoint: PATCH /weekly-schedules/:id
    */
   async updateWeeklyScheduleDays(id: string, days: Partial<WeeklyScheduleDay>[]): Promise<WeeklySchedule> {
@@ -285,7 +285,7 @@ export const weeklyScheduleService = {
       return await response.json();
     } catch (error: any) {
       console.error('Error updating weekly schedule days:', error);
-      throw new Error(error.message || 'Không thể cập nhật lịch làm việc');
+      throw new Error(error.message || 'Cannot update weekly schedule');
     }
   },
 };

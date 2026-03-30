@@ -9,7 +9,7 @@ export interface AdjustmentType {
 
 export const adjustmentService = {
   /**
-   * Lấy danh sách adjustment types
+   * Get list of adjustment types
    * API: GET /payroll/ajusmentType
    */
   async getAdjustmentTypes(): Promise<AdjustmentType[]> {

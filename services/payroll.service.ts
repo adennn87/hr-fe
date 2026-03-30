@@ -5,7 +5,7 @@ export type PayrollAdjustmentCategory = 'ADD' | 'SUB';
 export interface PayrollAdjustment {
   id?: string;
   name: string;
-  // Backend có thể trả "type" thay vì "category"
+  // Backend might return "type" instead of "category"
   category?: PayrollAdjustmentCategory;
   type?: PayrollAdjustmentCategory;
   amount: string | number;
@@ -42,9 +42,9 @@ export interface PayrollDetail {
   finalSalary: number;
   adjustments: PayrollAdjustment[];
   leaves: PayrollLeave[];
-  /** BHXH + BHYT + BHTN (nếu backend tách dòng) */
+  /** Social Insurance + Health Insurance + Unemployment Insurance (if backend separates lines) */
   insurance?: number;
-  /** Thuế TNCN */
+  /** Personal Income Tax */
   tax?: number;
 }
 
@@ -76,7 +76,7 @@ function departmentToString(d: unknown): string | null {
   return null;
 }
 
-/** Chuẩn hóa user từ nhiều dạng API (camelCase / snake_case / nested department). */
+/** Normalize user from multiple API formats (camelCase / snake_case / nested department). */
 export function normalizePayrollUser(raw: unknown): PayrollUser {
   if (!raw || typeof raw !== 'object') {
     return { id: '', name: '', email: '', department: null };
@@ -95,12 +95,12 @@ function normalizeAdjustments(raw: unknown): PayrollAdjustment[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((item) => {
     if (!item || typeof item !== 'object') {
-      return { name: 'Điều chỉnh', amount: 0, category: 'ADD' };
+      return { name: 'Adjustment', amount: 0, category: 'ADD' };
     }
     const a = item as Record<string, unknown>;
     return {
       id: a.id !== undefined ? String(a.id) : undefined,
-      name: String(a.name ?? a.title ?? 'Điều chỉnh'),
+      name: String(a.name ?? a.title ?? 'Adjustment'),
       category: (a.category ?? a.type) as PayrollAdjustmentCategory | undefined,
       type: (a.type ?? a.category) as PayrollAdjustmentCategory | undefined,
       amount: num(a.amount, a.value),
@@ -144,7 +144,7 @@ function normalizeLeaves(raw: unknown): PayrollLeave[] {
 }
 
 /**
- * Gộp nhiều dạng field backend (camelCase, snake_case, tên khác) về PayrollDetail thống nhất.
+ * Merge multiple backend field formats (camelCase, snake_case, other names) into a unified PayrollDetail.
  */
 export function normalizePayrollDetail(raw: unknown): PayrollDetail {
   const p = unwrapPayrollPayload(raw);
@@ -306,8 +306,8 @@ async function tryGet<T>(url: string): Promise<T> {
 
 export const payrollService = {
   /**
-   * Lấy lương theo userId và month.
-   * Thử nhiều endpoint phổ biến; chuẩn hóa field (snake_case / camelCase / nested user).
+   * Get payroll by userId and month.
+   * Try multiple common endpoints; normalize fields (snake_case / camelCase / nested user).
    */
   async getPayrollByUserId(userId: string, month: string | number): Promise<PayrollDetail> {
     const baseUrl = API_URL.replace('/api', '');
@@ -341,11 +341,11 @@ export const payrollService = {
     });
     throw lastErr instanceof Error
       ? lastErr
-      : new Error('Không thể tải lương theo nhân viên');
+      : new Error('Cannot load payroll by employee');
   },
 
   /**
-   * Lấy bảng lương theo tháng (tất cả user) cho admin.
+   * Get payroll by month (all users) for admin.
    */
   async getPayrollByMonth(month: string | number): Promise<PayrollMonthRow[]> {
     const baseUrl = API_URL.replace('/api', '');
@@ -370,7 +370,7 @@ export const payrollService = {
             month: String(row.month ?? m),
             user: detail.user,
             finalSalary: detail.finalSalary,
-            // Thêm các field thô để UI check null
+            // Add raw fields for UI to check null
             workingDays: row.workingDays,
             baseSalary: row.baseSalary,
           } as any;
@@ -385,9 +385,9 @@ export const payrollService = {
   },
 
   /**
-   * Tải phiếu lương PDF của một nhân viên theo tháng.
+   * Download PDF payslip of an employee by month.
    * Endpoint: GET /payroll/pdf?userId=&month=
-   * Trả về Blob PDF.
+   * Returns PDF Blob.
    */
   async downloadPayrollPdf(userId: string, month: string | number): Promise<Blob> {
     const baseUrl = API_URL.replace('/api', '');
@@ -404,22 +404,22 @@ export const payrollService = {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      throw new Error(`Không thể tải phiếu lương PDF (${response.status})${text ? ': ' + text : ''}`);
+      throw new Error(`Cannot download PDF payslip (${response.status})${text ? ': ' + text : ''}`);
     }
 
     return response.blob();
   },
 
   /**
-   * Tính lương cho tất cả nhân viên trong tháng.
-   * Sử dụng endpoint mới: POST /payroll/generate
+   * Calculate payroll for all employees in the month.
+   * Using new endpoint: POST /payroll/generate
    */
   async calculatePayroll(month: string | number): Promise<void> {
     const baseUrl = API_URL.replace('/api', '');
     const token = getAuthToken();
     
-    // Thêm query month nếu backend cần, nhưng curl của user không có.
-    // Thử gọi /payroll/generate trực tiếp.
+    // Add month query if backend needs it, but user's curl does not include it.
+    // Try to call /payroll/generate directly.
     const response = await fetch(`${baseUrl}/payroll/generate`, {
       method: 'POST',
       headers: {
@@ -430,7 +430,7 @@ export const payrollService = {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Không thể tính lương');
+      throw new Error(errorData.message || 'Cannot calculate payroll');
     }
   },
 };

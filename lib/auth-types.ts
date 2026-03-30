@@ -15,7 +15,7 @@ export interface User {
   location: string;
   avatar: string;
   mfaEnabled: boolean;
-  taxCode?: string; // Thêm trường taxCode tùy chọn
+  taxCode?: string; // Add optional taxCode field
   permissions: string[];
 }
 
