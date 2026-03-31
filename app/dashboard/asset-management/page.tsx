@@ -68,17 +68,28 @@ export default function AssetManagementPage() {
   };
 
   // Permission checks
-  const canViewAllocations = isAdmin || hasPermission('ASSET_ALLOCATE_VIEW');
+  const canViewAllocations = isAdmin || hasPermission('ASSET_VIEW');
   const canViewInventory = isAdmin || hasPermission('ASSET_VIEW');
   const canCreateAsset = isAdmin || hasPermission('ASSET_CREATE');
   const canAllocate = isAdmin || hasPermission('ASSET_ALLOCATE_CREATE');
 
   // Redirect if not admin and lacks ASSET_VIEW permission
+  // Redirect if not authorized
   useEffect(() => {
-    if (!isAdmin && !hasPermission('ASSET_VIEW')) {
+    const isAuthorized = isAdmin || hasPermission('ASSET_VIEW') || hasPermission('ASSET_ALLOCATE_VIEW');
+    if (!isAuthorized) {
       router.replace('/dashboard');
     }
   }, [isAdmin, hasPermission, router]);
+
+  // Set initial tab based on permissions
+  useEffect(() => {
+    if (!canViewAllocations && canViewInventory) {
+      setActiveTab('inventory');
+    } else if (canViewAllocations && !canViewInventory) {
+      setActiveTab('allocations');
+    }
+  }, [canViewAllocations, canViewInventory]);
 
   useEffect(() => {
     if (canViewAllocations || canViewInventory) {
@@ -267,18 +278,22 @@ export default function AssetManagementPage() {
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('allocations')}
-          className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'allocations' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-        >
-          Allocated
-        </button>
-        <button
-          onClick={() => setActiveTab('inventory')}
-          className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'inventory' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-        >
-          Asset Inventory
-        </button>
+        {canViewAllocations && (
+          <button
+            onClick={() => setActiveTab('allocations')}
+            className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'allocations' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
+            Allocated
+          </button>
+        )}
+        {canViewInventory && (
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${activeTab === 'inventory' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
+            Asset Inventory
+          </button>
+        )}
       </div>
 
       {/* Content */}
@@ -415,10 +430,10 @@ export default function AssetManagementPage() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${asset.status.toLowerCase() === 'available'
-                              ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                              : asset.status.toLowerCase() === 'allocated'
-                                ? 'bg-green-50 text-green-600 border border-green-100'
-                                : 'bg-slate-50 text-slate-500 border border-slate-100'
+                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                            : asset.status.toLowerCase() === 'allocated'
+                              ? 'bg-green-50 text-green-600 border border-green-100'
+                              : 'bg-slate-50 text-slate-500 border border-slate-100'
                             }`}>
                             {asset.status.toLowerCase() === 'available' ? 'Available' : asset.status.toLowerCase() === 'allocated' ? 'Allocated' : asset.status}
                           </span>

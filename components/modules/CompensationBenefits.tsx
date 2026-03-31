@@ -166,9 +166,12 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     return isAdminRoleId(userRoleId) || (user?.role && typeof user.role === 'string' && ['admin', 'system admin', 'hr manager'].includes(user.role.toLowerCase()));
   }, [userRoleId, user.role]);
 
-  // Load employees for dropdown when admin enters salary tab
+  const canViewAllPayroll = useMemo(() => isAdmin || hasPermission('PAYROLL_VIEW'), [isAdmin, hasPermission]);
+  const canGeneratePayroll = useMemo(() => isAdmin || hasPermission('PAYROLL_GENERATE'), [isAdmin, hasPermission]);
+
+  // Load employees for dropdown when admin/manager enters salary tab
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canViewAllPayroll) return;
     if (activeTab !== 'salary') return;
 
     const loadEmployees = async () => {
@@ -202,7 +205,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     };
 
     loadEmployees();
-  }, [isAdmin, activeTab]);
+  }, [canViewAllPayroll, activeTab]);
 
   // Load payroll theo userId + month
   useEffect(() => {
@@ -228,17 +231,17 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     };
 
     // Non-admin: only allow viewing own salary
-    if (!isAdmin && selectedEmployeeId !== 'me') {
+    if (!canViewAllPayroll && selectedEmployeeId !== 'me') {
       setSelectedEmployeeId('me');
       return;
     }
 
     loadPayroll();
-  }, [activeTab, selectedEmployeeId, selectedMonth, user.id, isAdmin]);
+  }, [activeTab, selectedEmployeeId, selectedMonth, user.id, canViewAllPayroll]);
 
   // Admin: load monthly payroll table to display dropdown "Name - username - net pay"
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canViewAllPayroll) return;
     if (activeTab !== 'salary') return;
 
     const loadMonthRows = async () => {
@@ -256,7 +259,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
     };
 
     loadMonthRows();
-  }, [isAdmin, activeTab, selectedMonth]);
+  }, [canViewAllPayroll, activeTab, selectedMonth]);
 
   const [isCalculating, setIsCalculating] = useState(false);
 
@@ -291,7 +294,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
   };
 
   const isPayrollDataMissing = useMemo(() => {
-    if (isAdmin && monthRows.length > 0) {
+    if (canViewAllPayroll && monthRows.length > 0) {
       // Check if any row has null values (based on user request)
       return monthRows.some((row: any) => row.workingDays === null || row.baseSalary === null);
     }
@@ -299,7 +302,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
         return payroll.workingDays === null || payroll.baseSalary === null;
     }
     return false;
-  }, [isAdmin, monthRows, payroll]);
+  }, [canViewAllPayroll, monthRows, payroll]);
 
   const salaryData = useMemo(() => {
     // If API returns payroll, use it, else fallback to mock
@@ -429,7 +432,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             <span className="inline-block w-2 h-2 rounded-full bg-gray-300" />
             Checking permissions...
           </div>
-        ) : isAdmin ? (
+        ) : canViewAllPayroll ? (
           <Button type="button" variant="outline" className="gap-2">
             <Settings className="w-4 h-4" />
             Settings
@@ -479,7 +482,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             </div>
             
             <div className="flex flex-wrap items-end gap-3">
-              {isAdmin && (
+              {canViewAllPayroll && (
                 <div className="flex flex-col gap-1">
                   <Label className="text-xs text-gray-500 font-bold uppercase tracking-wider">Employee</Label>
                   {isLoadingEmployees ? (
@@ -586,7 +589,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
                     </SelectContent>
                   </Select>
 
-                  {isAdmin && hasPermission('PAYROLL_GENERATE') && (
+                  {canGeneratePayroll && (
                     <Button 
                       onClick={handleCalculatePayroll} 
                       disabled={isCalculating}
@@ -601,7 +604,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             </div>
           </div>
 
-          {isAdmin && isPayrollDataMissing && (
+          {canViewAllPayroll && isPayrollDataMissing && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in duration-300">
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
               <div>
@@ -615,7 +618,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           )}
 
           {/* Admin: Monthly Salary Summary Table */}
-          {isAdmin && monthRows.length > 0 && (
+          {canViewAllPayroll && monthRows.length > 0 && (
             <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm mb-6">
               <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -684,7 +687,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
             </div>
           )}
 
-          {isAdmin && selectedEmployeeId !== 'me' && selectedEmployee && (
+          {canViewAllPayroll && selectedEmployeeId !== 'me' && selectedEmployee && (
             <div className="flex items-center justify-between mb-4 animate-in slide-in-from-left duration-300">
               <div className="text-sm text-slate-600">
                 Viewing salary details of: <span className="font-bold text-slate-900 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">{selectedEmployee.fullName || selectedEmployee.email}</span>
@@ -871,7 +874,7 @@ export function CompensationBenefits({ user }: CompensationBenefitsProps) {
           </div>
 
           {/* ===== Screen 2: Export Employee Salary (admin only) ===== */}
-          {isAdmin && (
+          {canViewAllPayroll && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

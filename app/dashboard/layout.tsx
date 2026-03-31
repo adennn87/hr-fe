@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const user = useStoredUser();
-  const { hasModuleAccess, hasPermission } = usePermissions();
+  const { hasModuleAccess, hasPermission, isAdmin } = usePermissions();
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.module) return true;
@@ -55,6 +55,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.cookie = 'access_token=; path=/; max-age=0';
     router.push('/login');
   };
+
+  if (pathname.startsWith('/dashboard/asset-management') && !isAdmin && !hasPermission('ASSET_VIEW')) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

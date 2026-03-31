@@ -19,7 +19,7 @@ export function usePermissions() {
     const func = SYSTEM_FUNCTIONS.find(
       f => f.code === permissionCodeOrName || f.name === permissionCodeOrName
     );
-    console.log('Function found:', SYSTEM_FUNCTIONS);
+    
     // Nếu không tìm thấy quyền trong hệ thống, vẫn thử check trực tiếp trong user.permissions
     if (!func) {
       return user.permissions?.includes(permissionCodeOrName) || false;
