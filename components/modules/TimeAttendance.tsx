@@ -159,6 +159,11 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   const scheduleFetchGenRef = useRef(0);
 
   const isAdmin = useMemo(() => isAdminUser(userRoleId, user.role), [userRoleId, user.role]);
+  const canViewAllSchedules = hasPermission('WEEKLY_SCHEDULE_VIEW');
+  const canCreateSchedule = hasPermission('WEEKLY_SCHEDULE_CREATE');
+  const canApproveLeave = hasPermission('LEAVE_REQUEST_APPROVE');
+  const canViewAllLeave = hasPermission('LEAVE_REQUEST_VIEW') || canApproveLeave;
+  console.log('User role ID:', user.role);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -208,12 +213,17 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   };
 
   useEffect(() => {
-    if (isAdmin && (isCreateScheduleModalOpen || activeTab === 'leave' || (activeTab === 'schedule' && scheduleScope === 'all'))) {
+    const needsEmployees = 
+      isCreateScheduleModalOpen || 
+      (activeTab === 'leave' && canViewAllLeave) || 
+      (activeTab === 'schedule' && canViewAllSchedules && scheduleScope === 'all');
+
+    if (needsEmployees) {
       loadEmployees();
     }
-  }, [isCreateScheduleModalOpen, isAdmin, activeTab, scheduleScope]);
+  }, [isCreateScheduleModalOpen, canViewAllLeave, canViewAllSchedules, activeTab, scheduleScope]);
 
-  const canFilterLeaveByEmployee = useMemo(() => isAdminRoleId(userRoleId), [userRoleId]);
+  const canFilterLeaveByEmployee = useMemo(() => canApproveLeave, [canApproveLeave]);
   const isLeaveFilterShowAll = useMemo(() => !leaveSelectedUserId || leaveSelectedUserId === 'all', [leaveSelectedUserId]);
 
   const leaveFilterEmployeeLabel = useMemo(() => {
@@ -223,12 +233,12 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   }, [isLeaveFilterShowAll, leaveSelectedUserId, employees]);
 
   const displayedLeaveRequests = useMemo(() => {
-    if (isAdmin) {
+    if (canViewAllLeave) {
       if (isLeaveFilterShowAll) return leaveRequests;
       return leaveRequests.filter(r => getLeaveRequestUserId(r) === leaveSelectedUserId);
     }
     return leaveRequests.filter(r => getLeaveRequestUserId(r) === user.id);
-  }, [isAdmin, isLeaveFilterShowAll, leaveSelectedUserId, leaveRequests, user.id]);
+  }, [canViewAllLeave, isLeaveFilterShowAll, leaveSelectedUserId, leaveRequests, user.id]);
 
   const displayScheduleBrowseAll = useMemo(() => {
     let filtered = [...scheduleBrowseAll];
@@ -353,17 +363,19 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
   useEffect(() => {
     if (activeTab !== 'schedule') return;
     const requestGen = ++scheduleFetchGenRef.current;
-    if (isAdmin && scheduleScope === 'all') fetchAllSchedulesBrowse(requestGen);
+    if (canViewAllSchedules && scheduleScope === 'all') fetchAllSchedulesBrowse(requestGen);
     else fetchWeeklyScheduleForUser(viewingUserId || user.id, requestGen);
     return () => { scheduleFetchGenRef.current += 1; };
-  }, [activeTab, user.id, viewingUserId, scheduleScope, isAdmin]);
+  }, [activeTab, user.id, viewingUserId, scheduleScope, canViewAllSchedules]);
 
   useEffect(() => {
     if (activeTab !== 'leave') return;
     const fetchLeave = async () => {
       setIsLoadingLeave(true);
       try {
-        const data = isAdmin ? await leaveRequestService.getAllLeaveRequests() : await leaveRequestService.getMyLeaveRequests();
+        const data = canViewAllLeave 
+          ? await leaveRequestService.getAllLeaveRequests() 
+          : await leaveRequestService.getMyLeaveRequests();
         setLeaveRequests(data || []);
       } catch (error) {
         console.error('Error fetching leave:', error);
@@ -372,7 +384,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       }
     };
     fetchLeave();
-  }, [activeTab, isAdmin]);
+  }, [activeTab, canViewAllLeave]);
 
   const handleSubmitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,7 +393,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       await leaveRequestService.createLeaveRequest(leaveForm);
       toast.success('Request submitted successfully');
       setIsCreateLeaveModalOpen(false);
-      const data = isAdmin ? await leaveRequestService.getAllLeaveRequests() : await leaveRequestService.getMyLeaveRequests();
+      const data = canViewAllLeave ? await leaveRequestService.getAllLeaveRequests() : await leaveRequestService.getMyLeaveRequests();
       setLeaveRequests(data || []);
     } catch (error) {
       toast.error('Error submitting request');
@@ -431,7 +443,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
       });
       toast.success('Schedule created successfully');
       setIsCreateScheduleModalOpen(false);
-      if (isAdmin && scheduleScope === 'all') fetchAllSchedulesBrowse();
+      if (canViewAllSchedules && scheduleScope === 'all') fetchAllSchedulesBrowse();
       else fetchWeeklyScheduleForUser(viewingUserId || user.id);
     } catch (error: any) {
       toast.error(error.message || 'Error creating schedule');
@@ -486,7 +498,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
             </Button>
           </div>
 
-          {isAdmin && hasPermission('LEAVE_REQUEST_APPROVE') && (
+          {canApproveLeave && (
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
               <Label className="text-sm font-medium text-gray-600 shrink-0">Filter employee:</Label>
               <Select value={leaveSelectedUserId} onValueChange={setLeaveSelectedUserId}>
@@ -507,7 +519,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                 <div key={req.id} className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm">
                   <div className="flex justify-between items-start">
                     <div>
-                      {isAdmin && <p className="text-sm font-bold text-blue-700 mb-1">{getLeaveRequestEmployeeLabel(req)}</p>}
+                      {canViewAllLeave && <p className="text-sm font-bold text-blue-700 mb-1">{getLeaveRequestEmployeeLabel(req)}</p>}
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-bold text-gray-900">{req.type}</span>
                         <span className={cn(
@@ -518,10 +530,18 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                       <p className="text-sm text-gray-600">{req.startDate} → {req.endDate}</p>
                       <p className="text-sm text-gray-500 mt-1 italic">"{req.reason}"</p>
                     </div>
-                    {isAdmin && req.status === 'PENDING' && hasPermission('LEAVE_REQUEST_APPROVE') && (
+                    {req.status === 'PENDING' && canApproveLeave && (
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="text-green-600" onClick={() => leaveRequestService.updateLeaveStatus(req.id, 'APPROVED').then(() => loadEmployees())}>Approve</Button>
-                        <Button size="sm" variant="outline" className="text-red-600">Reject</Button>
+                        <Button size="sm" variant="outline" className="text-green-600" onClick={() => leaveRequestService.updateLeaveStatus(req.id, 'APPROVED').then(() => {
+                           if (activeTab === 'leave') {
+                             const fetchLeave = async () => {
+                               const data = canViewAllLeave ? await leaveRequestService.getAllLeaveRequests() : await leaveRequestService.getMyLeaveRequests();
+                               setLeaveRequests(data || []);
+                             };
+                             fetchLeave();
+                           }
+                        })}>Duyệt</Button>
+                        <Button size="sm" variant="outline" className="text-red-600">Từ chối</Button>
                       </div>
                     )}
                   </div>
@@ -537,13 +557,13 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-lg font-bold text-gray-900">This Week's Schedule</h3>
             <div className="flex items-center gap-3">
-              {isAdmin && scheduleScope === 'all' && (
+              {canViewAllSchedules && scheduleScope === 'all' && (
                 <div className="relative w-64">
                   <Input placeholder="Search employee..." value={scheduleSearch} onChange={e => setScheduleSearch(e.target.value)} className="pl-9 h-9" />
                   <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               )}
-              {isAdmin && hasPermission('WEEKLY_SCHEDULE_VIEW') && (
+              {canViewAllSchedules && (
                 <Select value={scheduleScope} onValueChange={v => setScheduleScope(v as any)}>
                   <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -552,7 +572,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                   </SelectContent>
                 </Select>
               )}
-              {isAdmin && hasPermission('WEEKLY_SCHEDULE_CREATE') && (
+              {canCreateSchedule && (
                 <Button onClick={handleOpenCreateScheduleModal} size="sm" className="bg-purple-600 hover:bg-purple-700 h-9">
                   <Plus className="w-4 h-4 mr-2" /> Create Schedule
                 </Button>
@@ -562,7 +582,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
 
           {isLoadingSchedule ? (
             <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>
-          ) : isAdmin && scheduleScope === 'all' ? (
+          ) : (canViewAllSchedules && scheduleScope === 'all') ? (
             <div className="space-y-3">
               {displayScheduleBrowseAll.map(block => {
                 const emp = employees.find(e => e.id === block.userId) || block.raw?.user;
@@ -609,7 +629,7 @@ export function TimeAttendance({ user }: TimeAttendanceProps) {
                       <p className={cn("text-lg font-bold leading-tight", row.status === 'leave' ? "text-red-700" : "text-gray-900")}>{row.shift}</p>
                       {row.status === 'today' && !row.isLeave && <p className="text-[10px] text-orange-600 font-bold mt-1">Today</p>}
                     </div>
-                    {isAdmin && scheduleScope === 'self' && (
+                    {canCreateSchedule && scheduleScope === 'self' && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400"><Settings className="w-4 h-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
